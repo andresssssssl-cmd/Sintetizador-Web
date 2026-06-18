@@ -84,3 +84,149 @@ select { background: #111; color: white; border: 1px solid #444; padding: 2px; f
 .label { font-weight: bold; font-size: 0.8rem; pointer-events: none;}
 .bind { font-size: 0.6rem; color: #888; pointer-events: none; margin-top: 3px; }
 .key.active .bind { color: #fff; }
+
+/* --- UTILIDAD PARA OCULTAR ELEMENTOS --- */
+.hidden {
+    display: none !important;
+}
+
+/* --- ESTILOS DE LA PANTALLA DE AUTENTICACIÓN --- */
+.auth-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    background-color: var(--bg);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.auth-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+    width: 100%;
+    max-width: 350px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-card h2 {
+    margin: 0 0 15px 0;
+    color: var(--accent);
+    text-align: center;
+    border-bottom: none;
+}
+
+.auth-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.auth-card input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px;
+    background: #111;
+    border: 1px solid #444;
+    color: white;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.auth-card button {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 12px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-top: 10px;
+}
+
+.auth-card button:hover {
+    background: #00b8b9;
+}
+/* --- ESTILO RECUPERAR CONTRASEÑA --- */
+.forgot-text {
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-align: right;
+    cursor: pointer;
+    margin-top: -10px;
+    margin-bottom: 5px;
+    transition: color 0.3s;
+}
+
+.forgot-text:hover {
+    text-decoration: underline;
+    color: #00b8b9;
+}
+.toggle-text {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #888;
+    margin-top: 10px;
+}
+
+.toggle-text span {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+/* Ajuste para que la app del synth ocupe bien el espacio cuando se muestre */
+#synth-app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+/* --- ESTILOS SOCIAL LOGIN --- */
+.divider {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    margin: 5px 0;
+    position: relative;
+}
+.divider::before, .divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background: #444;
+}
+.divider::before { left: 0; }
+.divider::after { right: 0; }
+
+.social-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #fff !important; /* Sobrescribe el fondo oscuro */
+    color: #333 !important;
+    border: 1px solid #ccc !important;
+    padding: 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.social-btn:hover {
+    background: #f1f1f1 !important;
+}
