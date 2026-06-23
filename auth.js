@@ -6,7 +6,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, se
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyDD6QEHD3qjWbzVvOo3y9m2awcxdT_J4zs",
+    apiKey: "AIzaSyBd-2K8Tf6mDUK8DGeU-0SZaxsGd16NFxk",
     authDomain: "sintetizador-modular-adlt.firebaseapp.com",
     projectId: "sintetizador-modular-adlt",
     storageBucket: "sintetizador-modular-adlt.firebasestorage.app",
