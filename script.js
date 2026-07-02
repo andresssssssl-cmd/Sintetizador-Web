@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'n', name: 'Ruido', isNoise: true, waveOpts: '<option value="white">Blanco</option><option value="pink">Rosa</option>', defVol: 0.0, defSemi: 0 }
     ];
 
-    const rack = document.getElementById('synth-rack');
+  const rack = document.getElementById('synth-rack');
     modulesData.forEach(m => {
         rack.innerHTML += `
         <div class="module ${m.isNoise ? 'noise' : ''}">
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
         </div>`;
     });
-
+    
     const keyMap = [
         { char: 'z', note: 'C3', freq: 130.81, black: false }, { char: 's', note: 'C#3', freq: 138.59, black: true, offset: 30 },
         { char: 'x', note: 'D3', freq: 146.83, black: false }, { char: 'd', note: 'D#3', freq: 155.56, black: true, offset: 75 },
@@ -70,21 +70,26 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `).join('');
 
-    // Actualizar textos de la interfaz dinámicamente
+// Actualizar textos de la interfaz dinámicamente
     document.addEventListener('input', e => {
         if (e.target.type === 'range') {
             const span = e.target.parentElement.querySelector('.val');
             if (span) span.innerText = e.target.value;
         }
 
-        if (e.target.id === 'master-vol' && masterGain) {
-            masterGain.gain.value = parseFloat(e.target.value);
-            document.getElementById('master-vol-val').innerText = e.target.value;
+        // Control del Volumen Maestro mejorado
+        if (e.target.id === 'master-vol') {
+            const masterVal = document.getElementById('master-vol-val');
+            if (masterVal) masterVal.innerText = e.target.value;
+            if (typeof masterGain !== 'undefined' && masterGain) {
+                masterGain.gain.value = parseFloat(e.target.value);
+            }
         }
 
-        if (audioCtx) {
+        // Control en tiempo real de los parámetros hacia los buses
+        if (typeof audioCtx !== 'undefined' && audioCtx) {
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
-                if (e.target.id.startsWith(id) && busses[id]) {
+                if (e.target.id.startsWith(id) && busses && busses[id]) {
                     busses[id].update(getParams(id));
                 }
             });
