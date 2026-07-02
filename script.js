@@ -419,12 +419,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
-        if (e.target.tagName === 'INPUT') return;
+        
+        // CORRECCIÓN: Solo ignorar el teclado físico si se está escribiendo texto
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
+        
         playNote(e.key.toLowerCase());
     });
 
     window.addEventListener('keyup', e => {
-        if (e.target.tagName === 'INPUT') return;
+        // CORRECCIÓN: Misma validación al soltar la tecla
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
+        
         stopNote(e.key.toLowerCase());
     });
 
