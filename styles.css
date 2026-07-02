@@ -230,3 +230,58 @@ select { background: #111; color: white; border: 1px solid #444; padding: 2px; f
 .social-btn:hover {
     background: #f1f1f1 !important;
 }
+
+/* --- ESTILOS DEL MASTER Y HEADER DEL MÓDULO --- */
+.master-section {
+    background: #1a1a20;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 20px;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 300px;
+}
+
+.master-section label {
+    font-size: 1rem;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 5px;
+}
+
+.master-section input[type="range"] {
+    width: 100%;
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+}
+
+.module-header h3 {
+    border: none !important;
+    padding: 0 !important;
+    margin: 0;
+}
+
+.switch-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: bold;
+    color: #fff;
+    cursor: pointer;
+    background: #333;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.switch-label input {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
