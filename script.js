@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const width = canvas.width;
         const height = canvas.height;
-        const nyquist = audioCtx ? audioCtx.sampleRate / 2 : 22050;
+        const nyquist = audioCtx ? audioCtx.sampleRate / 2 : 24000;
 
         // ------------------------------------------------
         // PANTALLA 1: RTA LOGARÍTMICO (20 Hz - 20 kHz)
@@ -162,82 +162,77 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.fillStyle = '#050505';
         canvasCtx.fillRect(0, 0, width, height);
 
-        // Definición matemática de las 31 bandas de 1/3 de octava (ISO 266)
-        const iso31Bands = [
-            20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
-            1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000
-        ];
-
         const fMin = 20;
         const fMax = 20000;
         const logFMin = Math.log10(fMin);
         const logFMax = Math.log10(fMax);
 
-        // 1. Renderizar espectro logarítmico pixel por pixel en el eje X
-        canvasCtx.fillStyle = 'rgba(0, 210, 211, 0.8)';
-        for (let x = 0; x < width; x++) {
-            const logF = logFMin + (x / width) * (logFMax - logFMin);
-            const f = Math.pow(10, logF);
+        // 1. Dibujar las barras con el estilo original (ajustadas a escala logarítmica)
+        for (let i = 0; i < bufferLength; i++) {
+            const freqCenter = (i * nyquist) / bufferLength;
+            const freqNext = ((i + 1) * nyquist) / bufferLength;
+
+            if (freqCenter < fMin || freqCenter > fMax) continue;
+
+            // Mapear posiciones en el eje X
+            const x = ((Math.log10(Math.max(fMin, freqCenter)) - logFMin) / (logFMax - logFMin)) * width;
+            const xNext = ((Math.log10(Math.min(fMax, freqNext)) - logFMin) / (logFMax - logFMin)) * width;
             
-            // Mapear frecuencia al índice bin del FFT
-            const binIndex = Math.round((f * bufferLength) / nyquist);
-            const val = dataArray[Math.min(binIndex, bufferLength - 1)] || 0;
-            
-            const barHeight = (val / 255) * height;
-            canvasCtx.fillRect(x, height - barHeight, 1, barHeight);
+            // Ancho de la barra, asegurando que no queden huecos feos
+            const barW = Math.max(1, xNext - x - 0.2); 
+
+            const barHeight = (dataArray[i] / 255) * height;
+            canvasCtx.fillStyle = `rgb(${dataArray[i] + 50}, 210, 211)`;
+            canvasCtx.fillRect(x, height - barHeight, barW, barHeight);
         }
 
-        // 2. CAPA SUPERIOR: Dibujar cuadrícula y las 31 bandas de referencia por encima del audio
-        canvasCtx.font = '9px monospace';
-        
-        iso31Bands.forEach((f) => {
-            // Calcular posición X logarítmica para cada una de las 31 bandas
-            const x = ((Math.log10(f) - logFMin) / (logFMax - logFMin)) * width;
-            
-            // Línea vertical sutil para cada banda de tercio de octava
-            canvasCtx.strokeStyle = 'rgba(51, 51, 51, 0.4)';
-            canvasCtx.lineWidth = 1;
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(x, 0);
-            canvasCtx.lineTo(x, height);
-            canvasCtx.stroke();
-
-            // Renderizar etiquetas de texto de forma selectiva para evitar colisiones visuales
-            // Mostramos frecuencias clave del estándar acústico
-            const etiquetasClave = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
-            if (etiquetasClave.includes(f)) {
-                let texto = f >= 1000 ? (f / 1000) + 'k' : f.toString();
-                
-                // Pequeño indicador vertical en la base
-                canvasCtx.strokeStyle = 'rgba(0, 212, 211, 0.6)';
-                canvasCtx.beginPath();
-                canvasCtx.moveTo(x, height);
-                canvasCtx.lineTo(x, height - 12);
-                canvasCtx.stroke();
-
-                // Dibujar texto con sombra de contraste para que nunca se pierda con las barras
-                canvasCtx.fillStyle = '#000';
-                canvasCtx.fillText(texto, x - 6, height - 3);
-                canvasCtx.fillText(texto, x - 4, height - 3);
-                canvasCtx.fillStyle = '#fff';
-                canvasCtx.fillText(texto, x - 5, height - 3);
-            }
+        // 2. Escala vertical de Amplitud (dB)
+        canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        canvasCtx.font = '10px monospace';
+        canvasCtx.textAlign = 'left';
+        const dbs = [0, -25, -50, -75];
+        dbs.forEach(db => {
+            const y = height - ((db + 100) / 100) * height;
+            // Línea guía horizontal
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            canvasCtx.beginPath(); canvasCtx.moveTo(0, y); canvasCtx.lineTo(width, y); canvasCtx.stroke();
+            // Texto dB
+            canvasCtx.fillText(db + 'dB', 5, Math.max(10, y - 2));
         });
 
-        // Líneas horizontales de amplitud (Amplitud relativa lineal representada sobre el lienzo)
-        const lineasAmplitud = [0.25, 0.5, 0.75];
-        lineasAmplitud.forEach(amp => {
-            const y = height - (amp * height);
-            canvasCtx.strokeStyle = 'rgba(40, 40, 40, 0.5)';
-            canvasCtx.beginPath();
-            canvasCtx.moveTo(0, y);
-            canvasCtx.lineTo(width, y);
-            canvasCtx.stroke();
+        // 3. Escala horizontal (31 bandas de 1/3 de Octava)
+        const iso31Bands = [
+            20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
+            1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000
+        ];
+        
+        canvasCtx.textAlign = 'center';
+        canvasCtx.font = '9px monospace';
+        iso31Bands.forEach((f, index) => {
+            const x = ((Math.log10(f) - logFMin) / (logFMax - logFMin)) * width;
+            
+            // Línea guía vertical tenue
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            canvasCtx.beginPath(); canvasCtx.moveTo(x, 0); canvasCtx.lineTo(x, height); canvasCtx.stroke();
+
+            // Alternar la altura del texto (zigzag) para evitar que se pisen
+            const isTop = index % 2 === 0;
+            const yText = isTop ? height - 16 : height - 4;
+            
+            let text = f >= 1000 ? (f / 1000) + 'k' : Math.round(f);
+            
+            // Dibujar fondo negro detrás del texto para que no se pierda entre las barras
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+            const textWidth = canvasCtx.measureText(text).width;
+            canvasCtx.fillRect(x - textWidth/2 - 2, yText - 8, textWidth + 4, 10);
+            
+            canvasCtx.fillStyle = '#ff9f43';
+            canvasCtx.fillText(text, x, yText);
         });
 
 
         // ------------------------------------------------
-        // PANTALLA 2: OSCILOSCOPIO MONOPERÍODO (TRIGGER)
+        // PANTALLA 2: OSCILOSCOPIO (AUTO-GAIN Y TRIGGER)
         // ------------------------------------------------
         const waveBuffer = analyser.fftSize;
         const waveData = new Uint8Array(waveBuffer);
@@ -249,61 +244,55 @@ document.addEventListener('DOMContentLoaded', () => {
         waveCtx.fillStyle = '#050505';
         waveCtx.fillRect(0, 0, wWidth, wHeight);
 
-        // Dibujar retícula central de referencia
+        // Cuadrícula básica
         waveCtx.lineWidth = 1;
         waveCtx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
         waveCtx.beginPath(); waveCtx.moveTo(0, wHeight/2); waveCtx.lineTo(wWidth, wHeight/2); waveCtx.stroke();
         waveCtx.beginPath(); waveCtx.moveTo(wWidth/2, 0); waveCtx.lineTo(wWidth/2, wHeight); waveCtx.stroke();
 
-        // ALGORITMO DE DISPARO (TRIGGER): Buscar cruce por cero (valor 128) con pendiente positiva
+        // 1. AUTO-GAIN: Encontrar la amplitud máxima para reescalar visualmente
+        let minVal = 255, maxVal = 0;
+        for(let i=0; i<waveBuffer; i++) {
+            if(waveData[i] < minVal) minVal = waveData[i];
+            if(waveData[i] > maxVal) maxVal = waveData[i];
+        }
+        let peak = Math.max(Math.abs(maxVal - 128), Math.abs(minVal - 128));
+        
+        // Multiplicador para que la onda siempre ocupe el 90% del lienzo
+        let scaleY = peak === 0 ? 1 : ((wHeight / 2) * 0.9) / peak;
+
+        // 2. TRIGGER DE ESTABILIZACIÓN: Encontrar el primer cruce por cero positivo
         let triggerIndex = 0;
         for (let i = 0; i < waveBuffer / 2; i++) {
-            if (waveData[i] <= 128 && waveData[i + 1] > 128) {
+            if (waveData[i] < 128 && waveData[i + 1] >= 128) {
                 triggerIndex = i;
                 break;
             }
         }
 
-        // Determinar el tamaño de la ventana para renderizar exactamente un período completo
-        let ventanaMuestras = waveBuffer - triggerIndex; // Ventana por defecto si no hay señal
-        
-        if (currentFundamentalFreq > 0 && audioCtx) {
-            // Período (muestras) = Frecuencia de muestreo / Frecuencia fundamental de la nota
-            const muestrasPorPeriodo = audioCtx.sampleRate / currentFundamentalFreq;
-            // Asegurar que el período calculado quepa dentro de nuestro búfer capturado
-            if (muestrasPorPeriodo < waveBuffer - triggerIndex) {
-                ventanaMuestras = muestrasPorPeriodo;
-            }
-        }
-
-        // Dibujar la forma de onda calculada
+        // 3. RENDERIZADO: Dibujar la onda
         waveCtx.lineWidth = 2;
         waveCtx.strokeStyle = '#ff9f43';
         waveCtx.beginPath();
 
-        const incrementoX = wWidth / ventanaMuestras;
+        // Ventana estática de dibujo para estabilizar acordes
+        const muestrasADibujar = Math.floor(waveBuffer * 0.6); 
+        const incrementoX = wWidth / muestrasADibujar;
         let xWave = 0;
 
-        for (let i = 0; i < ventanaMuestras; i++) {
+        for (let i = 0; i < muestrasADibujar; i++) {
             const idxData = triggerIndex + i;
             if (idxData >= waveBuffer) break;
 
-            const v = waveData[idxData] / 128.0; // Normalizar señal respecto al centro
-            const y = v * (wHeight / 2);
+            const v = waveData[idxData] - 128; // Centrar el valor en 0
+            const y = (wHeight / 2) - (v * scaleY); // Aplicar auto-escala e invertir Y
 
-            if (i === 0) {
-                waveCtx.moveTo(xWave, y);
-            } else {
-                waveCtx.lineTo(xWave, y);
-            }
+            if (i === 0) waveCtx.moveTo(xWave, y);
+            else waveCtx.lineTo(xWave, y);
+            
             xWave += incrementoX;
         }
         waveCtx.stroke();
-
-        // Indicador de modo en el Osciloscopio
-        waveCtx.fillStyle = '#777';
-        waveCtx.font = '10px monospace';
-        waveCtx.fillText('Osciloscopio: 1 Período Sincronizado', 5, 15);
     }
 
     // Ejecutar el nuevo bucle de animación unificado
