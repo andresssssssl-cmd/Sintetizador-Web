@@ -11,10 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const rack = document.getElementById('synth-rack');
-    rack.innerHTML = ''; // Limpiar rack antes de inyectar
+    rack.innerHTML = ''; 
     
     modulesData.forEach(m => {
-        // Determinar el sufijo numérico correcto para las etiquetas de las pestañas
         const labelNum = m.isNoise ? 'N' : m.id.replace('o', '');
 
         rack.innerHTML += `
@@ -105,9 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>`;
     });
 
-    // Controlador lógico unificado para Pestañas y Sub-Pestañas
     rack.addEventListener('click', (e) => {
-        // Pestañas Principales
         if (e.target.classList.contains('tab-btn')) {
             const clickedTab = e.target;
             const moduleContainer = clickedTab.closest('.module');
@@ -122,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activePanel) activePanel.classList.remove('hidden');
         }
         
-        // Sub-Pestañas de Efectos
         if (e.target.classList.contains('fx-tab-btn')) {
             const clickedTab = e.target;
             const fxContainer = clickedTab.closest('.tab-panel');
@@ -159,14 +155,12 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `).join('');
 
-// Actualizar textos de la interfaz dinámicamente
     document.addEventListener('input', e => {
         if (e.target.type === 'range') {
             const span = e.target.parentElement.querySelector('.val');
             if (span) span.innerText = e.target.value;
         }
 
-        // Control del Volumen Maestro mejorado
         if (e.target.id === 'master-vol') {
             const masterVal = document.getElementById('master-vol-val');
             if (masterVal) masterVal.innerText = e.target.value;
@@ -175,35 +169,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Control en tiempo real de los parámetros hacia los buses y voces activas
         if (typeof audioCtx !== 'undefined' && audioCtx) {
-            
-            // 1. Actualizar buses (Efectos globales Delay, Reverb, etc)
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
                 if (e.target.id.startsWith(id) && busses && busses[id]) {
                     busses[id].update(getParams(id));
                 }
             });
 
-            // 2. Modulación en tiempo real de las notas sostenidas
             const now = audioCtx.currentTime;
             Object.values(activeVoices).forEach(chains => {
                 chains.forEach(chain => {
-                    // Verifica si el deslizador pertenece a este oscilador
                     if (e.target.id.startsWith(chain.prefix)) {
                         const p = getParams(chain.prefix);
                         
-                        // Barrido de Filtros
                         if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
                         if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
                         
-                        // Modificación de Tono (Semitonos y Centésimas)
                         if (!chain.isNoise && chain.source) {
                             const pitchShift = p.semi + (p.cents / 100);
                             chain.source.frequency.setTargetAtTime(chain.baseFreq * Math.pow(2, pitchShift / 12), now, 0.05);
                         }
 
-                        // Modificación de LFO en vivo
                         if (chain.lfo) {
                             chain.lfo.frequency.setTargetAtTime(p.lfoRt, now, 0.05);
                             if (chain.lfoGain) {
@@ -222,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-  // ==========================================
+    // ==========================================
     // 2. MOTOR DE AUDIO (WEB AUDIO API)
     // ==========================================
     let audioCtx, masterGain, analyser, whiteNoiseBuffer, pinkNoiseBuffer;
@@ -243,9 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const height = canvas.height;
         const nyquist = audioCtx ? audioCtx.sampleRate / 2 : 24000;
 
-        // ------------------------------------------------
-        // PANTALLA 1: RTA LOGARÍTMICO (20 Hz - 20 kHz)
-        // ------------------------------------------------
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
@@ -258,40 +241,31 @@ document.addEventListener('DOMContentLoaded', () => {
         const logFMin = Math.log10(fMin);
         const logFMax = Math.log10(fMax);
 
-        // 1. Dibujar las barras con el estilo original (ajustadas a escala logarítmica)
         for (let i = 0; i < bufferLength; i++) {
             const freqCenter = (i * nyquist) / bufferLength;
             const freqNext = ((i + 1) * nyquist) / bufferLength;
-
             if (freqCenter < fMin || freqCenter > fMax) continue;
 
-            // Mapear posiciones en el eje X
             const x = ((Math.log10(Math.max(fMin, freqCenter)) - logFMin) / (logFMax - logFMin)) * width;
             const xNext = ((Math.log10(Math.min(fMax, freqNext)) - logFMin) / (logFMax - logFMin)) * width;
             
-            // Ancho de la barra, asegurando que no queden huecos feos
             const barW = Math.max(1, xNext - x - 0.2); 
-
             const barHeight = (dataArray[i] / 255) * height;
             canvasCtx.fillStyle = `rgb(${dataArray[i] + 50}, 210, 211)`;
             canvasCtx.fillRect(x, height - barHeight, barW, barHeight);
         }
 
-        // 2. Escala vertical de Amplitud (dB)
         canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         canvasCtx.font = '10px monospace';
         canvasCtx.textAlign = 'left';
         const dbs = [0, -25, -50, -75];
         dbs.forEach(db => {
             const y = height - ((db + 100) / 100) * height;
-            // Línea guía horizontal
             canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             canvasCtx.beginPath(); canvasCtx.moveTo(0, y); canvasCtx.lineTo(width, y); canvasCtx.stroke();
-            // Texto dB
             canvasCtx.fillText(db + 'dB', 5, Math.max(10, y - 2));
         });
 
-        // 3. Escala horizontal (31 bandas de 1/3 de Octava)
         const iso31Bands = [
             20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
             1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000
@@ -301,18 +275,13 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.font = '9px monospace';
         iso31Bands.forEach((f, index) => {
             const x = ((Math.log10(f) - logFMin) / (logFMax - logFMin)) * width;
-            
-            // Línea guía vertical tenue
             canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             canvasCtx.beginPath(); canvasCtx.moveTo(x, 0); canvasCtx.lineTo(x, height); canvasCtx.stroke();
 
-            // Alternar la altura del texto (zigzag) para evitar que se pisen
             const isTop = index % 2 === 0;
             const yText = isTop ? height - 16 : height - 4;
-            
             let text = f >= 1000 ? (f / 1000) + 'k' : Math.round(f);
             
-            // Dibujar fondo negro detrás del texto para que no se pierda entre las barras
             canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.75)';
             const textWidth = canvasCtx.measureText(text).width;
             canvasCtx.fillRect(x - textWidth/2 - 2, yText - 8, textWidth + 4, 10);
@@ -321,10 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasCtx.fillText(text, x, yText);
         });
 
-
-        // ------------------------------------------------
-        // PANTALLA 2: OSCILOSCOPIO (AUTO-GAIN Y TRIGGER)
-        // ------------------------------------------------
         const waveBuffer = analyser.fftSize;
         const waveData = new Uint8Array(waveBuffer);
         analyser.getByteTimeDomainData(waveData);
@@ -335,24 +300,19 @@ document.addEventListener('DOMContentLoaded', () => {
         waveCtx.fillStyle = '#050505';
         waveCtx.fillRect(0, 0, wWidth, wHeight);
 
-        // Cuadrícula básica
         waveCtx.lineWidth = 1;
         waveCtx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
         waveCtx.beginPath(); waveCtx.moveTo(0, wHeight/2); waveCtx.lineTo(wWidth, wHeight/2); waveCtx.stroke();
         waveCtx.beginPath(); waveCtx.moveTo(wWidth/2, 0); waveCtx.lineTo(wWidth/2, wHeight); waveCtx.stroke();
 
-        // 1. AUTO-GAIN: Encontrar la amplitud máxima para reescalar visualmente
         let minVal = 255, maxVal = 0;
         for(let i=0; i<waveBuffer; i++) {
             if(waveData[i] < minVal) minVal = waveData[i];
             if(waveData[i] > maxVal) maxVal = waveData[i];
         }
         let peak = Math.max(Math.abs(maxVal - 128), Math.abs(minVal - 128));
-        
-        // Multiplicador para que la onda siempre ocupe el 90% del lienzo
         let scaleY = peak === 0 ? 1 : ((wHeight / 2) * 0.9) / peak;
 
-        // 2. TRIGGER DE ESTABILIZACIÓN: Encontrar el primer cruce por cero positivo
         let triggerIndex = 0;
         for (let i = 0; i < waveBuffer / 2; i++) {
             if (waveData[i] < 128 && waveData[i + 1] >= 128) {
@@ -361,12 +321,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. RENDERIZADO: Dibujar la onda
         waveCtx.lineWidth = 2;
         waveCtx.strokeStyle = '#ff9f43';
         waveCtx.beginPath();
 
-        // Ventana estática de dibujo para estabilizar acordes
         const muestrasADibujar = Math.floor(waveBuffer * 0.6); 
         const incrementoX = wWidth / muestrasADibujar;
         let xWave = 0;
@@ -375,8 +333,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const idxData = triggerIndex + i;
             if (idxData >= waveBuffer) break;
 
-            const v = waveData[idxData] - 128; // Centrar el valor en 0
-            const y = (wHeight / 2) - (v * scaleY); // Aplicar auto-escala e invertir Y
+            const v = waveData[idxData] - 128;
+            const y = (wHeight / 2) - (v * scaleY); 
 
             if (i === 0) waveCtx.moveTo(xWave, y);
             else waveCtx.lineTo(xWave, y);
@@ -385,10 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         waveCtx.stroke();
     }
-    // Ejecutar el nuevo bucle de animación unificado
+    
     drawVisualizers();
 
-    // Generador de Curva para Overdrive
     function makeDistortionCurve(amount) {
         const k = typeof amount === 'number' ? amount : 50,
             n_samples = 44100,
@@ -401,24 +358,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return curve;
     }
 
-    // Generador Dinámico de Respuesta de Impulso para Reverb
     function createReverbIR(type, time) {
         if (!audioCtx) return null;
         const sampleRate = audioCtx.sampleRate;
-        const length = Math.floor(Math.max(1, sampleRate * time));
+        const length = Math.floor(Math.max(1, sampleRate * time)); 
         const impulse = audioCtx.createBuffer(2, length, sampleRate);
         
         for (let i = 0; i < 2; i++) {
             const channel = impulse.getChannelData(i);
             for (let j = 0; j < length; j++) {
-                let n = (Math.random() * 2 - 1); // Ruido blanco base
-                
-                // Algoritmos de emulación acústica por tipo
+                let n = (Math.random() * 2 - 1); 
                 if (type === 'spring') n *= Math.sin(j * 0.05) * Math.exp(-j / length * 10);
                 else if (type === 'plate') n *= (Math.random() > 0.5 ? 1 : -1); 
                 else if (type === 'room') n *= Math.exp(-j / (length * 0.5)); 
                 
-                // Envolvente general de decaimiento
                 let env = Math.pow(1 - j / length, type === 'ambience' ? 4 : 2);
                 channel[j] = n * env;
             }
@@ -445,73 +398,94 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Creación Avanzada de Bus FX Maestro por Oscilador
     function createBus(id) {
         const input = audioCtx.createGain();
         const output = audioCtx.createGain();
 
+        // BLINDAJE 1: Conexiones aisladas para evitar errores de ruteo en el navegador
         function createInsertFx() {
             const inNode = audioCtx.createGain();
             const outNode = audioCtx.createGain();
             const dry = audioCtx.createGain();
             const wet = audioCtx.createGain();
-            inNode.connect(dry).connect(outNode);
+            
+            inNode.connect(dry);
+            dry.connect(outNode);
+            
             return { in: inNode, out: outNode, dry, wet };
         }
 
-        // 1. Overdrive
         const odNode = createInsertFx();
         const drive = audioCtx.createWaveShaper();
-        odNode.in.connect(drive).connect(odNode.wet).connect(odNode.out);
+        odNode.in.connect(drive);
+        drive.connect(odNode.wet);
+        odNode.wet.connect(odNode.out);
         input.connect(odNode.in);
 
-        // 2. Phaser
         const phsNode = createInsertFx();
         const phaser = audioCtx.createBiquadFilter(); phaser.type = 'allpass';
         const pLfo = audioCtx.createOscillator(); pLfo.start();
         const pDepth = audioCtx.createGain();
         const phsFb = audioCtx.createGain();
-        pLfo.connect(pDepth).connect(phaser.frequency);
-        odNode.out.connect(phsNode.in).connect(phaser);
-        phaser.connect(phsNode.wet).connect(phsNode.out);
-        phaser.connect(phsFb).connect(phaser);
+        pLfo.connect(pDepth);
+        pDepth.connect(phaser.frequency);
+        odNode.out.connect(phsNode.in);
+        phsNode.in.connect(phaser);
+        phaser.connect(phsNode.wet);
+        phsNode.wet.connect(phsNode.out);
+        phaser.connect(phsFb);
+        phsFb.connect(phaser); 
 
-        // 3. Flanger (CORRECCIÓN: Aumentar el maxDelayTime a 1.0 para evitar colapso)
         const flgNode = createInsertFx();
-        const flanger = audioCtx.createDelay(1.0); 
+        const flanger = audioCtx.createDelay(2.0); 
+        // BLINDAJE 2: Asignar un tiempo base al flanger para que el LFO no lo baje a números negativos
+        flanger.delayTime.value = 0.005;
         const fLfo = audioCtx.createOscillator(); fLfo.start();
         const fDepth = audioCtx.createGain();
         const flgFb = audioCtx.createGain();
-        fLfo.connect(fDepth).connect(flanger.delayTime);
-        phsNode.out.connect(flgNode.in).connect(flanger);
-        flanger.connect(flgNode.wet).connect(flgNode.out);
-        flanger.connect(flgFb).connect(flanger);
+        fLfo.connect(fDepth);
+        fDepth.connect(flanger.delayTime);
+        phsNode.out.connect(flgNode.in);
+        flgNode.in.connect(flanger);
+        flanger.connect(flgNode.wet);
+        flgNode.wet.connect(flgNode.out);
+        flanger.connect(flgFb);
+        flgFb.connect(flanger); 
         
         flgNode.out.connect(output); 
 
         const sendNode = flgNode.out;
 
-        // 4. Delay Multimodo
         const dlyIn = audioCtx.createGain();
         const dlyWet = audioCtx.createGain();
-        const delayNode = audioCtx.createDelay(10.0); // CORRECCIÓN: Subido a 10s máximo
+        const delayNode = audioCtx.createDelay(10.0);
         const dlyFb = audioCtx.createGain();
         const dlyHc = audioCtx.createBiquadFilter(); dlyHc.type = 'lowpass';
         const dlyPan = audioCtx.createStereoPanner();
         
-        sendNode.connect(dlyIn).connect(delayNode);
-        delayNode.connect(dlyHc).connect(dlyFb).connect(delayNode); 
-        delayNode.connect(dlyPan).connect(dlyWet).connect(output);
+        sendNode.connect(dlyIn);
+        dlyIn.connect(delayNode);
+        delayNode.connect(dlyHc);
+        dlyHc.connect(dlyFb);
+        dlyFb.connect(delayNode); 
+        delayNode.connect(dlyPan);
+        dlyPan.connect(dlyWet);
+        dlyWet.connect(output);
 
-        // 5. Reverb Paramétrico
         const revIn = audioCtx.createGain();
         const revWet = audioCtx.createGain();
-        const preDelay = audioCtx.createDelay(5.0); // CORRECCIÓN: Subido a 5s máximo
+        const preDelay = audioCtx.createDelay(5.0);
         const revLc = audioCtx.createBiquadFilter(); revLc.type = 'highpass';
         const revHc = audioCtx.createBiquadFilter(); revHc.type = 'lowpass';
         const convolver = audioCtx.createConvolver();
         
-        sendNode.connect(revIn).connect(preDelay).connect(revLc).connect(revHc).connect(convolver).connect(revWet).connect(output);
+        sendNode.connect(revIn);
+        revIn.connect(preDelay);
+        preDelay.connect(revLc);
+        revLc.connect(revHc);
+        revHc.connect(convolver);
+        convolver.connect(revWet);
+        revWet.connect(output);
 
         let currentRevState = { typ: '', tm: 0 };
 
@@ -522,20 +496,25 @@ document.addEventListener('DOMContentLoaded', () => {
             input,
             update: (p) => {
                 drive.curve = makeDistortionCurve(p.odDrv);
-                odNode.wet.gain.value = p.odMix; odNode.dry.gain.value = 1 - p.odMix;
+                odNode.wet.gain.value = p.odMix; 
+                odNode.dry.gain.value = 1 - p.odMix;
                 
-                pLfo.frequency.value = p.phsRt; pDepth.gain.value = p.phsDp;
+                pLfo.frequency.value = p.phsRt; 
+                pDepth.gain.value = p.phsDp;
                 phsFb.gain.value = p.phsFb;
-                phsNode.wet.gain.value = p.phsMix; phsNode.dry.gain.value = 1 - p.phsMix;
+                phsNode.wet.gain.value = p.phsMix; 
+                phsNode.dry.gain.value = 1 - p.phsMix;
 
-                fLfo.frequency.value = p.flgRt; fDepth.gain.value = p.flgDp;
+                fLfo.frequency.value = p.flgRt; 
+                fDepth.gain.value = p.flgDp;
                 flgFb.gain.value = p.flgFb;
-                flgNode.wet.gain.value = p.flgMix; flgNode.dry.gain.value = 1 - p.flgMix;
+                flgNode.wet.gain.value = p.flgMix; 
+                flgNode.dry.gain.value = 1 - p.flgMix;
 
-                // CORRECCIÓN: Asegurar que el delay esté en rango válido para no colapsar el nodo
+                // BLINDAJE 3: Prevenir colapso por tiempos fuera de límite
                 delayNode.delayTime.value = Math.max(0.01, Math.min(p.dlyTm, 5.0));
                 dlyFb.gain.value = p.dlyFb;
-                dlyHc.frequency.value = p.dlyHc;
+                dlyHc.frequency.value = Math.max(20, Math.min(p.dlyHc, 20000));
                 dlyWet.gain.value = p.dlyMix;
                 
                 if(p.dlyTyp === 'mono') dlyPan.pan.value = 0;
@@ -543,8 +522,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 else if(p.dlyTyp === 'pan') dlyPan.pan.value = -0.8; 
                 
                 preDelay.delayTime.value = Math.max(0, Math.min(p.revPd, 2.0));
-                revLc.frequency.value = p.revLc;
-                revHc.frequency.value = p.revHc;
+                revLc.frequency.value = Math.max(20, Math.min(p.revLc, 20000));
+                revHc.frequency.value = Math.max(20, Math.min(p.revHc, 20000));
                 revWet.gain.value = p.revMix;
 
                 if (p.revTyp !== currentRevState.typ || p.revTm !== currentRevState.tm) {
@@ -572,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             createNoiseBuffers();
             
-            // Iniciar Buses FX
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
                 busses[id] = createBus(id);
                 busses[id].update(getParams(id));
@@ -641,6 +619,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filterHP = audioCtx.createBiquadFilter();
         filterHP.type = 'highpass'; 
+        // BLINDAJE 4: Proteger de valores NaN y evitar desbordes
         filterHP.frequency.value = Math.max(20, Math.min(params.hp, 20000));
 
         const filterLP = audioCtx.createBiquadFilter();
@@ -662,6 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lfo = audioCtx.createOscillator();
             lfoGain = audioCtx.createGain();
             lfo.frequency.value = params.lfoRt;
+            
             lfo.connect(lfoGain);
 
             if (params.lfoTgt === 'pitch' && !isNoise) {
@@ -683,6 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lfo.start(t);
         }
 
+        // Conexiones individuales
         source.connect(filterHP);
         filterHP.connect(filterLP);
         filterLP.connect(envGain);
@@ -701,7 +682,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         initAudio();
         const freq = parseFloat(keyEl.getAttribute('data-freq'));
-        currentFundamentalFreq = freq; // <-- AÑADE ESTA LÍNEA AQUÍ
+        currentFundamentalFreq = freq; 
         keyEl.classList.add('active');
         const t = audioCtx.currentTime;
 
@@ -750,7 +731,6 @@ document.addEventListener('DOMContentLoaded', () => {
         key.addEventListener('mouseup', () => stopNote(char));
         key.addEventListener('mouseleave', () => stopNote(char));
         
-        // Permite tocar notas arrastrando el ratón (Glissando)
         key.addEventListener('mouseenter', (e) => {
             if (e.buttons === 1) {
                 playNote(char);
@@ -761,7 +741,6 @@ document.addEventListener('DOMContentLoaded', () => {
         key.addEventListener('touchend', (e) => { e.preventDefault(); stopNote(char); });
     });
 
-    // Liberar el foco del navegador al soltar los controles
     document.addEventListener('mouseup', (e) => {
         if ((e.target.tagName === 'INPUT' && e.target.type === 'range') || e.target.tagName === 'SELECT') {
             e.target.blur(); 
@@ -770,16 +749,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
-        
-        // Solo ignorar el teclado físico si se está escribiendo texto
         if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
-        
         playNote(e.key.toLowerCase());
     });
 
     window.addEventListener('keyup', e => {
         if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
-        
         stopNote(e.key.toLowerCase());
     });
 
@@ -806,7 +781,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const note = message.data[1];
         const velocity = (message.data.length > 2) ? message.data[2] : 0;
 
-        // Mapeo estándar MIDI: C3 = 48 (Hasta C5 = 72)
         const midiMap = {
             48: 'z', 49: 's', 50: 'x', 51: 'd', 52: 'c', 53: 'v', 54: 'g', 55: 'b',
             56: 'h', 57: 'n', 58: 'j', 59: 'm', 60: 'q', 61: '2', 62: 'w', 63: '3',
@@ -814,16 +788,13 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         const char = midiMap[note];
-        if (!char) return; // Ignoramos notas fuera de las 2 octavas que construimos en pantalla
+        if (!char) return; 
 
-        // Note On (Comando 144 con velocidad mayor a 0)
         if (command === 144 && velocity > 0) {
             playNote(char);
         } 
-        // Note Off (Comando 128, o Comando 144 con velocidad 0)
         else if (command === 128 || (command === 144 && velocity === 0)) {
             stopNote(char);
         }
     }
-
 });
