@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ==========================================
+  // ==========================================
     // 2. MOTOR DE AUDIO (WEB AUDIO API)
     // ==========================================
     let audioCtx, masterGain, analyser, whiteNoiseBuffer, pinkNoiseBuffer;
@@ -140,28 +140,107 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const canvas = document.getElementById('rta-canvas');
     const canvasCtx = canvas.getContext('2d');
+    const waveCanvas = document.getElementById('wave-canvas');
+    const waveCtx = waveCanvas.getContext('2d');
     
-    function drawRTA() {
-        requestAnimationFrame(drawRTA);
+    function drawVisualizers() {
+        requestAnimationFrame(drawVisualizers);
         if(!analyser) return;
 
+        // ------------------------------------------------
+        // PANTALLA 1: ESPECTRO DE FRECUENCIAS (RTA)
+        // ------------------------------------------------
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
 
-        canvasCtx.fillStyle = '#050505';
-        canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+        const width = canvas.width;
+        const height = canvas.height;
 
-        const barWidth = (canvas.width / bufferLength) * 2.5;
-        let x = 0;
+        canvasCtx.fillStyle = '#050505';
+        canvasCtx.fillRect(0, 0, width, height);
+
+        // Cuadrícula y Textos del RTA
+        canvasCtx.lineWidth = 1;
+        canvasCtx.strokeStyle = '#222';
+        canvasCtx.fillStyle = '#777';
+        canvasCtx.font = '10px monospace';
+
+        // Eje X: Líneas de Frecuencia (Asumiendo Nyquist ~24kHz)
+        const nyquist = (typeof audioCtx !== 'undefined' && audioCtx) ? audioCtx.sampleRate / 2 : 24000;
+        const freqs = [1000, 5000, 10000, 15000, 20000];
+        freqs.forEach(f => {
+            const x = (f / nyquist) * width;
+            canvasCtx.beginPath(); canvasCtx.moveTo(x, 0); canvasCtx.lineTo(x, height); canvasCtx.stroke();
+            canvasCtx.fillText((f/1000) + 'kHz', x + 5, height - 5);
+        });
+
+        // Eje Y: Líneas de Amplitud (dB)
+        const dbs = [0, -25, -50, -75];
+        dbs.forEach(db => {
+            const y = height - ((db + 100) / 100) * height;
+            canvasCtx.beginPath(); canvasCtx.moveTo(0, y); canvasCtx.lineTo(width, y); canvasCtx.stroke();
+            canvasCtx.fillText(db + 'dB', 5, y + 12);
+        });
+
+        // Barras de Frecuencia
+        const barWidth = (width / bufferLength) * 2.5;
+        let xPos = 0;
         for(let i = 0; i < bufferLength; i++) {
-            const barHeight = dataArray[i] / 2.5;
-            canvasCtx.fillStyle = `rgb(${barHeight + 100}, 210, 211)`;
-            canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
+            const barHeight = (dataArray[i] / 255) * height;
+            canvasCtx.fillStyle = `rgb(${dataArray[i] + 50}, 210, 211)`;
+            canvasCtx.fillRect(xPos, height - barHeight, barWidth, barHeight);
+            xPos += barWidth + 1;
         }
+
+        // ------------------------------------------------
+        // PANTALLA 2: OSCILOSCOPIO (FORMA DE ONDA)
+        // ------------------------------------------------
+        const waveBuffer = analyser.fftSize;
+        const waveData = new Uint8Array(waveBuffer);
+        analyser.getByteTimeDomainData(waveData); // Extrae la onda en el tiempo, no en frecuencias
+
+        const wWidth = waveCanvas.width;
+        const wHeight = waveCanvas.height;
+
+        waveCtx.fillStyle = '#050505';
+        waveCtx.fillRect(0, 0, wWidth, wHeight);
+
+        // Cuadrícula y Texto del Osciloscopio
+        waveCtx.lineWidth = 1;
+        waveCtx.strokeStyle = '#222';
+        waveCtx.beginPath(); waveCtx.moveTo(0, wHeight/2); waveCtx.lineTo(wWidth, wHeight/2); waveCtx.stroke();
+        waveCtx.beginPath(); waveCtx.moveTo(wWidth/2, 0); waveCtx.lineTo(wWidth/2, wHeight); waveCtx.stroke();
+        
+        waveCtx.fillStyle = '#777';
+        waveCtx.font = '10px monospace';
+        waveCtx.fillText('Osciloscopio (Tiempo)', 5, 15);
+
+        // Dibujar la línea continua de la onda
+        waveCtx.lineWidth = 2;
+        waveCtx.strokeStyle = '#ff9f43'; // Naranja para diferenciarlo
+        waveCtx.beginPath();
+
+        const sliceWidth = wWidth * 1.0 / waveBuffer;
+        let xWave = 0;
+
+        for(let i = 0; i < waveBuffer; i++) {
+            const v = waveData[i] / 128.0; // 128 es el centro de la fase (silencio)
+            const y = v * (wHeight / 2);
+
+            if(i === 0) {
+                waveCtx.moveTo(xWave, y);
+            } else {
+                waveCtx.lineTo(xWave, y);
+            }
+
+            xWave += sliceWidth;
+        }
+        waveCtx.stroke();
     }
-    drawRTA();
+    
+    // Iniciar el ciclo de dibujo
+    drawVisualizers();
 
     // Generador de Curva para Overdrive
     function makeDistortionCurve(amount) {
