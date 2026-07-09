@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function createReverbIR(type, time) {
         if (!audioCtx) return null;
         const sampleRate = audioCtx.sampleRate;
-        const length = Math.max(0.1, sampleRate * time); 
+        const length = Math.floor(Math.max(1, sampleRate * time));
         const impulse = audioCtx.createBuffer(2, length, sampleRate);
         
         for (let i = 0; i < 2; i++) {
@@ -576,8 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             analyser.connect(audioCtx.destination);
             
             createNoiseBuffers();
-            audioCtx.reverbBuffer = createReverbIR();
-
+            
             // Iniciar Buses FX
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
                 busses[id] = createBus(id);
@@ -788,5 +787,48 @@ document.addEventListener('DOMContentLoaded', () => {
         
         stopNote(e.key.toLowerCase());
     });
+
+    // ==========================================
+    // 4. SOPORTE MIDI (Web MIDI API)
+    // ==========================================
+    if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+    }
+
+    function onMIDISuccess(midiAccess) {
+        for (let input of midiAccess.inputs.values()) {
+            input.onmidimessage = getMIDIMessage;
+        }
+        console.log("Interfaz MIDI lista y escuchando.");
+    }
+
+    function onMIDIFailure() {
+        console.warn("No se pudo acceder a los dispositivos MIDI o el navegador no lo soporta.");
+    }
+
+    function getMIDIMessage(message) {
+        const command = message.data[0];
+        const note = message.data[1];
+        const velocity = (message.data.length > 2) ? message.data[2] : 0;
+
+        // Mapeo estándar MIDI: C3 = 48 (Hasta C5 = 72)
+        const midiMap = {
+            48: 'z', 49: 's', 50: 'x', 51: 'd', 52: 'c', 53: 'v', 54: 'g', 55: 'b',
+            56: 'h', 57: 'n', 58: 'j', 59: 'm', 60: 'q', 61: '2', 62: 'w', 63: '3',
+            64: 'e', 65: 'r', 66: '5', 67: 't', 68: '6', 69: 'y', 70: '7', 71: 'u', 72: 'i'
+        };
+
+        const char = midiMap[note];
+        if (!char) return; // Ignoramos notas fuera de las 2 octavas que construimos en pantalla
+
+        // Note On (Comando 144 con velocidad mayor a 0)
+        if (command === 144 && velocity > 0) {
+            playNote(char);
+        } 
+        // Note Off (Comando 128, o Comando 144 con velocidad 0)
+        else if (command === 128 || (command === 144 && velocity === 0)) {
+            stopNote(char);
+        }
+    }
 
 });
