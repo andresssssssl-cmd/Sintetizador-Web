@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-       // Control en tiempo real de los parámetros hacia los buses y voces activas
+        // Control en tiempo real de los parámetros hacia los buses y voces activas
         if (typeof audioCtx !== 'undefined' && audioCtx) {
             
             // 1. Actualizar buses (Efectos globales Delay, Reverb, etc)
@@ -96,15 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // 2. NUEVO: Actualizar parámetros en tiempo real de las notas sostenidas
+            // 2. Modulación en tiempo real de las notas sostenidas
             const now = audioCtx.currentTime;
             Object.values(activeVoices).forEach(chains => {
                 chains.forEach(chain => {
-                    // Verifica si el deslizador que movemos pertenece a este oscilador
+                    // Verifica si el deslizador pertenece a este oscilador
                     if (e.target.id.startsWith(chain.prefix)) {
                         const p = getParams(chain.prefix);
                         
-                        // Barrido de Filtros (con un suavizado de 50ms para evitar chasquidos)
+                        // Barrido de Filtros
                         if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
                         if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
                         
@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==========================================
-    // 3. EVENTOS DE ENTRADA (Mause, Táctil, Teclado)
+    // 3. EVENTOS DE ENTRADA (Mouse, Táctil, Teclado)
     // ==========================================
     document.querySelectorAll('.key').forEach(key => {
         const char = key.dataset.char;
@@ -450,9 +450,8 @@ document.addEventListener('DOMContentLoaded', () => {
         key.addEventListener('mouseup', () => stopNote(char));
         key.addEventListener('mouseleave', () => stopNote(char));
         
-        // NUEVO: Permite tocar notas arrastrando el ratón (Glissando)
+        // Permite tocar notas arrastrando el ratón (Glissando)
         key.addEventListener('mouseenter', (e) => {
-            // e.buttons === 1 verifica si el botón izquierdo del ratón está presionado
             if (e.buttons === 1) {
                 playNote(char);
             }
@@ -462,17 +461,23 @@ document.addEventListener('DOMContentLoaded', () => {
         key.addEventListener('touchend', (e) => { e.preventDefault(); stopNote(char); });
     });
 
-   window.addEventListener('keydown', e => {
+    // Liberar el foco del navegador al soltar los controles
+    document.addEventListener('mouseup', (e) => {
+        if ((e.target.tagName === 'INPUT' && e.target.type === 'range') || e.target.tagName === 'SELECT') {
+            e.target.blur(); 
+        }
+    });
+
+    window.addEventListener('keydown', e => {
         if (e.repeat) return;
         
-        // CORRECCIÓN: Solo ignorar el teclado físico si se está escribiendo texto
+        // Solo ignorar el teclado físico si se está escribiendo texto
         if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
         
         playNote(e.key.toLowerCase());
     });
 
     window.addEventListener('keyup', e => {
-        // CORRECCIÓN: Misma validación al soltar la tecla
         if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
         
         stopNote(e.key.toLowerCase());
