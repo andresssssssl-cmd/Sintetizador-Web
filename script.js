@@ -936,3 +936,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+/* --- ADAPTACIÓN MÓVIL --- */
+@media (max-width: 768px) {
+    #synth-rack {
+        flex-direction: column;
+        align-items: center;
+        padding: 10px;
+    }
+    
+    .module {
+        width: 100% !important;
+        margin-bottom: 20px;
+    }
+
+    /* Contenedor del teclado con scroll horizontal */
+    #keyboard-container {
+        overflow-x: auto;
+        white-space: nowrap;
+        padding-bottom: 10px;
+    }
+
+    .key {
+        /* Hacemos las teclas un poco más anchas para dedos */
+        width: 40px !important; 
+    }
+    
+    /* Evitar que el navegador haga scroll al tocar las teclas */
+    .key, .module, .tab-btn {
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+}
