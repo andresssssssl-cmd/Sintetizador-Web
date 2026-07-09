@@ -285,3 +285,31 @@ select { background: #111; color: white; border: 1px solid #444; padding: 2px; f
     accent-color: var(--accent);
     cursor: pointer;
 }
+
+/* --- ESTILOS DE CAJAS NUMÉRICAS --- */
+.val-input {
+    background: #111;
+    color: var(--accent);
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 0.75rem;
+    width: 48px;
+    text-align: center;
+    font-family: monospace;
+}
+
+.val-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Ocultar las flechas de incremento del navegador */
+.val-input::-webkit-outer-spin-button,
+.val-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.val-input[type=number] {
+    -moz-appearance: textfield;
+}
