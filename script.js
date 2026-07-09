@@ -11,41 +11,82 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const rack = document.getElementById('synth-rack');
+    rack.innerHTML = ''; // Limpiar rack antes de inyectar
+    
     modulesData.forEach(m => {
+        // Determinar el sufijo numérico correcto para las etiquetas de las pestañas
+        const labelNum = m.isNoise ? 'N' : m.id.replace('o', '');
+
         rack.innerHTML += `
-        <div class="module ${m.isNoise ? 'noise' : ''}">
+        <div class="module ${m.isNoise ? 'noise' : ''}" data-module="${m.id}">
             <div class="module-header">
                 <h3>${m.name}</h3>
                 <label class="switch-label"><input type="checkbox" id="${m.id}-active" checked> ON</label>
             </div>
             
-            <label>Tipo: <select id="${m.id}-type">${m.waveOpts}</select></label>
-            <label>Volumen (<span class="val">${m.defVol}</span>) <input type="range" id="${m.id}-vol" min="0" max="1" step="0.01" value="${m.defVol}"></label>
-            ${!m.isNoise ? `
-            <label>Semitonos (<span class="val">${m.defSemi}</span>) <input type="range" id="${m.id}-semi" min="-24" max="24" step="1" value="${m.defSemi}"></label>
-            <label>Centésimas (<span class="val">0</span>) <input type="range" id="${m.id}-cents" min="-50" max="50" step="1" value="0"></label>
-            ` : ''}
-            <label>Filtro LP (<span class="val">20000</span>Hz) <input type="range" id="${m.id}-lp" min="20" max="20000" step="1" value="20000"></label>
-            <label>Filtro HP (<span class="val">20</span>Hz) <input type="range" id="${m.id}-hp" min="20" max="20000" step="1" value="20"></label>
-            
-            <h4>Envolvente ADSR</h4>
-            <label>A (<span class="val">0.05</span>s) <input type="range" id="${m.id}-a" min="0.01" max="2" step="0.01" value="0.05"></label>
-            <label>D (<span class="val">0.3</span>s) <input type="range" id="${m.id}-d" min="0.01" max="2" step="0.01" value="0.3"></label>
-            <label>S (<span class="val">0.5</span>) <input type="range" id="${m.id}-s" min="0" max="1" step="0.01" value="0.5"></label>
-            <label>R (<span class="val">0.5</span>s) <input type="range" id="${m.id}-r" min="0.01" max="3" step="0.01" value="0.5"></label>
-            
-            <h4>Efectos</h4>
-            <label>Overdrive (<span class="val">0</span>) <input type="range" id="${m.id}-drv" min="0" max="100" step="1" value="0"></label>
-            <label>Phaser Mix (<span class="val">0</span>) <input type="range" id="${m.id}-phs" min="0" max="1" step="0.01" value="0"></label>
-            <label>Flanger Mix (<span class="val">0</span>) <input type="range" id="${m.id}-flg" min="0" max="1" step="0.01" value="0"></label>
-            <label>Delay Mix (<span class="val">0</span>) <input type="range" id="${m.id}-dly" min="0" max="1" step="0.01" value="0"></label>
-            <label>Reverb Mix (<span class="val">0</span>) <input type="range" id="${m.id}-rev" min="0" max="1" step="0.01" value="0"></label>
+            <div class="module-tabs">
+                <button type="button" class="tab-btn active" data-tab="osc">OSC ${labelNum}</button>
+                <button type="button" class="tab-btn" data-tab="adsr">ADSR ${labelNum}</button>
+                <button type="button" class="tab-btn" data-tab="fx">FX ${labelNum}</button>
+                <button type="button" class="tab-btn" data-tab="lfo">LFO ${labelNum}</button>
+            </div>
 
-            <h4>LFO</h4>
-            <label>Destino: <select id="${m.id}-lfo-tgt"><option value="none">Off</option>${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}<option value="lp">Cutoff LP</option><option value="vol">Volumen</option></select></label>
-            <label>Rate (<span class="val">5</span>Hz) <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
-            <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
+            <div class="tab-panel" id="panel-${m.id}-osc">
+                <label>Tipo: <select id="${m.id}-type">${m.waveOpts}</select></label>
+                <label>Volumen (<span class="val">${m.defVol}</span>) <input type="range" id="${m.id}-vol" min="0" max="1" step="0.01" value="${m.defVol}"></label>
+                ${!m.isNoise ? `
+                <label>Semitonos (<span class="val">${m.defSemi}</span>) <input type="range" id="${m.id}-semi" min="-24" max="24" step="1" value="${m.defSemi}"></label>
+                <label>Centésimas (<span class="val">0</span>) <input type="range" id="${m.id}-cents" min="-50" max="50" step="1" value="0"></label>
+                ` : ''}
+                <label>Filtro LP (<span class="val">20000</span>Hz) <input type="range" id="${m.id}-lp" min="20" max="20000" step="1" value="20000"></label>
+                <label>Filtro HP (<span class="val">20</span>Hz) <input type="range" id="${m.id}-hp" min="20" max="20000" step="1" value="20"></label>
+            </div>
+
+            <div class="tab-panel hidden" id="panel-${m.id}-adsr">
+                <h4>Envolvente ADSR</h4>
+                <label>A (<span class="val">0.05</span>s) <input type="range" id="${m.id}-a" min="0.01" max="2" step="0.01" value="0.05"></label>
+                <label>D (<span class="val">0.3</span>s) <input type="range" id="${m.id}-d" min="0.01" max="2" step="0.01" value="0.3"></label>
+                <label>S (<span class="val">0.5</span>) <input type="range" id="${m.id}-s" min="0" max="1" step="0.01" value="0.5"></label>
+                <label>R (<span class="val">0.5</span>s) <input type="range" id="${m.id}-r" min="0.01" max="3" step="0.01" value="0.5"></label>
+            </div>
+            
+            <div class="tab-panel hidden" id="panel-${m.id}-fx">
+                <h4>Efectos</h4>
+                <label>Overdrive (<span class="val">0</span>) <input type="range" id="${m.id}-drv" min="0" max="100" step="1" value="0"></label>
+                <label>Phaser Mix (<span class="val">0</span>) <input type="range" id="${m.id}-phs" min="0" max="1" step="0.01" value="0"></label>
+                <label>Flanger Mix (<span class="val">0</span>) <input type="range" id="${m.id}-flg" min="0" max="1" step="0.01" value="0"></label>
+                <label>Delay Mix (<span class="val">0</span>) <input type="range" id="${m.id}-dly" min="0" max="1" step="0.01" value="0"></label>
+                <label>Reverb Mix (<span class="val">0</span>) <input type="range" id="${m.id}-rev" min="0" max="1" step="0.01" value="0"></label>
+            </div>
+
+            <div class="tab-panel hidden" id="panel-${m.id}-lfo">
+                <h4>LFO</h4>
+                <label>Destino: <select id="${m.id}-lfo-tgt"><option value="none">Off</option>${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}<option value="lp">Cutoff LP</option><option value="vol">Volumen</option></select></label>
+                <label>Rate (<span class="val">5</span>Hz) <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
+                <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
+            </div>
         </div>`;
+    });
+
+    // Controlador lógico para conmutar las pestañas de forma independiente por módulo
+    rack.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('tab-btn')) return;
+
+        const clickedTab = e.target;
+        const moduleContainer = clickedTab.closest('.module');
+        const moduleId = moduleContainer.dataset.module;
+        const targetPanelType = clickedTab.dataset.tab;
+
+        // Desactivar botones de pestañas únicamente dentro de este módulo
+        moduleContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        clickedTab.classList.add('active');
+
+        // Ocultar todos los paneles correspondientes a este módulo
+        moduleContainer.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+
+        // Mostrar el panel seleccionado por su id estructurado
+        const activePanel = moduleContainer.querySelector(`#panel-${moduleId}-${targetPanelType}`);
+        if (activePanel) activePanel.classList.remove('hidden');
     });
     
     const keyMap = [
@@ -294,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         waveCtx.stroke();
     }
-
     // Ejecutar el nuevo bucle de animación unificado
     drawVisualizers();
 
