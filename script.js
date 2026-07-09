@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             masterGain.gain.value = masterSlider ? parseFloat(masterSlider.value) : 0.7; 
             
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 512;
+            analyser.fftSize = 8192;
             
             masterGain.connect(analyser);
             analyser.connect(audioCtx.destination);
