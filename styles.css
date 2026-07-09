@@ -349,3 +349,42 @@ select { background: #111; color: white; border: 1px solid #444; padding: 2px; f
     gap: 8px;
     min-height: 145px; /* Mantiene la consistencia de altura del rack */
 }
+
+/* --- SUB-PESTAÑAS DE FX --- */
+.fx-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 8px;
+    background: #0a0a0c;
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.fx-tab-btn {
+    background: transparent;
+    color: #666;
+    border: none;
+    border-radius: 2px;
+    padding: 4px 2px;
+    font-size: 0.65rem;
+    cursor: pointer;
+    flex: 1;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.fx-tab-btn:hover { color: #aaa; }
+.fx-tab-btn.active {
+    background: #333;
+    color: var(--accent);
+}
+
+.fx-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 5px;
+    background: #151518;
+    border-radius: 4px;
+    border: 1px solid #222;
+}
