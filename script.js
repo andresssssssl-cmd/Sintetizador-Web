@@ -86,12 +86,47 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Control en tiempo real de los parámetros hacia los buses
+       // Control en tiempo real de los parámetros hacia los buses y voces activas
         if (typeof audioCtx !== 'undefined' && audioCtx) {
+            
+            // 1. Actualizar buses (Efectos globales Delay, Reverb, etc)
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
                 if (e.target.id.startsWith(id) && busses && busses[id]) {
                     busses[id].update(getParams(id));
                 }
+            });
+
+            // 2. NUEVO: Actualizar parámetros en tiempo real de las notas sostenidas
+            const now = audioCtx.currentTime;
+            Object.values(activeVoices).forEach(chains => {
+                chains.forEach(chain => {
+                    // Verifica si el deslizador que movemos pertenece a este oscilador
+                    if (e.target.id.startsWith(chain.prefix)) {
+                        const p = getParams(chain.prefix);
+                        
+                        // Barrido de Filtros (con un suavizado de 50ms para evitar chasquidos)
+                        if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
+                        if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
+                        
+                        // Modificación de Tono (Semitonos y Centésimas)
+                        if (!chain.isNoise && chain.source) {
+                            const pitchShift = p.semi + (p.cents / 100);
+                            chain.source.frequency.setTargetAtTime(chain.baseFreq * Math.pow(2, pitchShift / 12), now, 0.05);
+                        }
+
+                        // Modificación de LFO en vivo
+                        if (chain.lfo) {
+                            chain.lfo.frequency.setTargetAtTime(p.lfoRt, now, 0.05);
+                            if (chain.lfoGain) {
+                                let newDepth = 0;
+                                if (p.lfoTgt === 'pitch') newDepth = p.lfoDp * 5;
+                                else if (p.lfoTgt === 'lp') newDepth = p.lfoDp * 50;
+                                else if (p.lfoTgt === 'vol') newDepth = p.lfoDp / 100;
+                                chain.lfoGain.gain.setTargetAtTime(newDepth, now, 0.05);
+                            }
+                        }
+                    }
+                });
             });
         }
     });
@@ -357,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lfoModGain.connect(busses[prefix].input);
 
         source.start(t);
-        return { source, envGain, lfo, lfoModGain, r: params.r };
+        return { source, envGain, lfo, lfoGain, lfoModGain, filterLP, filterHP, baseFreq, r: params.r, prefix, isNoise };
     }
 
     function playNote(char) {
@@ -410,9 +445,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     document.querySelectorAll('.key').forEach(key => {
         const char = key.dataset.char;
+        
         key.addEventListener('mousedown', () => playNote(char));
         key.addEventListener('mouseup', () => stopNote(char));
         key.addEventListener('mouseleave', () => stopNote(char));
+        
+        // NUEVO: Permite tocar notas arrastrando el ratón (Glissando)
+        key.addEventListener('mouseenter', (e) => {
+            // e.buttons === 1 verifica si el botón izquierdo del ratón está presionado
+            if (e.buttons === 1) {
+                playNote(char);
+            }
+        });
+
         key.addEventListener('touchstart', (e) => { e.preventDefault(); playNote(char); });
         key.addEventListener('touchend', (e) => { e.preventDefault(); stopNote(char); });
     });
