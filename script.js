@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. MOTOR DE AUDIO (WEB AUDIO API)
     // ==========================================
     let audioCtx, masterGain, analyser, whiteNoiseBuffer, pinkNoiseBuffer;
+    let currentFundamentalFreq = 0;
     const activeVoices = {};
     const busses = {};
 
@@ -147,58 +148,100 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(drawVisualizers);
         if(!analyser) return;
 
+        const width = canvas.width;
+        const height = canvas.height;
+        const nyquist = audioCtx ? audioCtx.sampleRate / 2 : 22050;
+
         // ------------------------------------------------
-        // PANTALLA 1: ESPECTRO DE FRECUENCIAS (RTA)
+        // PANTALLA 1: RTA LOGARÍTMICO (20 Hz - 20 kHz)
         // ------------------------------------------------
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
         analyser.getByteFrequencyData(dataArray);
 
-        const width = canvas.width;
-        const height = canvas.height;
-
         canvasCtx.fillStyle = '#050505';
         canvasCtx.fillRect(0, 0, width, height);
 
-        // Cuadrícula y Textos del RTA
-        canvasCtx.lineWidth = 1;
-        canvasCtx.strokeStyle = '#222';
-        canvasCtx.fillStyle = '#777';
-        canvasCtx.font = '10px monospace';
+        // Definición matemática de las 31 bandas de 1/3 de octava (ISO 266)
+        const iso31Bands = [
+            20, 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
+            1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 16000, 20000
+        ];
 
-        // Eje X: Líneas de Frecuencia (Asumiendo Nyquist ~24kHz)
-        const nyquist = (typeof audioCtx !== 'undefined' && audioCtx) ? audioCtx.sampleRate / 2 : 24000;
-        const freqs = [1000, 5000, 10000, 15000, 20000];
-        freqs.forEach(f => {
-            const x = (f / nyquist) * width;
-            canvasCtx.beginPath(); canvasCtx.moveTo(x, 0); canvasCtx.lineTo(x, height); canvasCtx.stroke();
-            canvasCtx.fillText((f/1000) + 'kHz', x + 5, height - 5);
-        });
+        const fMin = 20;
+        const fMax = 20000;
+        const logFMin = Math.log10(fMin);
+        const logFMax = Math.log10(fMax);
 
-        // Eje Y: Líneas de Amplitud (dB)
-        const dbs = [0, -25, -50, -75];
-        dbs.forEach(db => {
-            const y = height - ((db + 100) / 100) * height;
-            canvasCtx.beginPath(); canvasCtx.moveTo(0, y); canvasCtx.lineTo(width, y); canvasCtx.stroke();
-            canvasCtx.fillText(db + 'dB', 5, y + 12);
-        });
-
-        // Barras de Frecuencia
-        const barWidth = (width / bufferLength) * 2.5;
-        let xPos = 0;
-        for(let i = 0; i < bufferLength; i++) {
-            const barHeight = (dataArray[i] / 255) * height;
-            canvasCtx.fillStyle = `rgb(${dataArray[i] + 50}, 210, 211)`;
-            canvasCtx.fillRect(xPos, height - barHeight, barWidth, barHeight);
-            xPos += barWidth + 1;
+        // 1. Renderizar espectro logarítmico pixel por pixel en el eje X
+        canvasCtx.fillStyle = 'rgba(0, 210, 211, 0.8)';
+        for (let x = 0; x < width; x++) {
+            const logF = logFMin + (x / width) * (logFMax - logFMin);
+            const f = Math.pow(10, logF);
+            
+            // Mapear frecuencia al índice bin del FFT
+            const binIndex = Math.round((f * bufferLength) / nyquist);
+            const val = dataArray[Math.min(binIndex, bufferLength - 1)] || 0;
+            
+            const barHeight = (val / 255) * height;
+            canvasCtx.fillRect(x, height - barHeight, 1, barHeight);
         }
 
+        // 2. CAPA SUPERIOR: Dibujar cuadrícula y las 31 bandas de referencia por encima del audio
+        canvasCtx.font = '9px monospace';
+        
+        iso31Bands.forEach((f) => {
+            // Calcular posición X logarítmica para cada una de las 31 bandas
+            const x = ((Math.log10(f) - logFMin) / (logFMax - logFMin)) * width;
+            
+            // Línea vertical sutil para cada banda de tercio de octava
+            canvasCtx.strokeStyle = 'rgba(51, 51, 51, 0.4)';
+            canvasCtx.lineWidth = 1;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(x, 0);
+            canvasCtx.lineTo(x, height);
+            canvasCtx.stroke();
+
+            // Renderizar etiquetas de texto de forma selectiva para evitar colisiones visuales
+            // Mostramos frecuencias clave del estándar acústico
+            const etiquetasClave = [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000];
+            if (etiquetasClave.includes(f)) {
+                let texto = f >= 1000 ? (f / 1000) + 'k' : f.toString();
+                
+                // Pequeño indicador vertical en la base
+                canvasCtx.strokeStyle = 'rgba(0, 212, 211, 0.6)';
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(x, height);
+                canvasCtx.lineTo(x, height - 12);
+                canvasCtx.stroke();
+
+                // Dibujar texto con sombra de contraste para que nunca se pierda con las barras
+                canvasCtx.fillStyle = '#000';
+                canvasCtx.fillText(texto, x - 6, height - 3);
+                canvasCtx.fillText(texto, x - 4, height - 3);
+                canvasCtx.fillStyle = '#fff';
+                canvasCtx.fillText(texto, x - 5, height - 3);
+            }
+        });
+
+        // Líneas horizontales de amplitud (Amplitud relativa lineal representada sobre el lienzo)
+        const lineasAmplitud = [0.25, 0.5, 0.75];
+        lineasAmplitud.forEach(amp => {
+            const y = height - (amp * height);
+            canvasCtx.strokeStyle = 'rgba(40, 40, 40, 0.5)';
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(0, y);
+            canvasCtx.lineTo(width, y);
+            canvasCtx.stroke();
+        });
+
+
         // ------------------------------------------------
-        // PANTALLA 2: OSCILOSCOPIO (FORMA DE ONDA)
+        // PANTALLA 2: OSCILOSCOPIO MONOPERÍODO (TRIGGER)
         // ------------------------------------------------
         const waveBuffer = analyser.fftSize;
         const waveData = new Uint8Array(waveBuffer);
-        analyser.getByteTimeDomainData(waveData); // Extrae la onda en el tiempo, no en frecuencias
+        analyser.getByteTimeDomainData(waveData);
 
         const wWidth = waveCanvas.width;
         const wHeight = waveCanvas.height;
@@ -206,40 +249,64 @@ document.addEventListener('DOMContentLoaded', () => {
         waveCtx.fillStyle = '#050505';
         waveCtx.fillRect(0, 0, wWidth, wHeight);
 
-        // Cuadrícula y Texto del Osciloscopio
+        // Dibujar retícula central de referencia
         waveCtx.lineWidth = 1;
-        waveCtx.strokeStyle = '#222';
+        waveCtx.strokeStyle = 'rgba(51, 51, 51, 0.5)';
         waveCtx.beginPath(); waveCtx.moveTo(0, wHeight/2); waveCtx.lineTo(wWidth, wHeight/2); waveCtx.stroke();
         waveCtx.beginPath(); waveCtx.moveTo(wWidth/2, 0); waveCtx.lineTo(wWidth/2, wHeight); waveCtx.stroke();
-        
-        waveCtx.fillStyle = '#777';
-        waveCtx.font = '10px monospace';
-        waveCtx.fillText('Osciloscopio (Tiempo)', 5, 15);
 
-        // Dibujar la línea continua de la onda
+        // ALGORITMO DE DISPARO (TRIGGER): Buscar cruce por cero (valor 128) con pendiente positiva
+        let triggerIndex = 0;
+        for (let i = 0; i < waveBuffer / 2; i++) {
+            if (waveData[i] <= 128 && waveData[i + 1] > 128) {
+                triggerIndex = i;
+                break;
+            }
+        }
+
+        // Determinar el tamaño de la ventana para renderizar exactamente un período completo
+        let ventanaMuestras = waveBuffer - triggerIndex; // Ventana por defecto si no hay señal
+        
+        if (currentFundamentalFreq > 0 && audioCtx) {
+            // Período (muestras) = Frecuencia de muestreo / Frecuencia fundamental de la nota
+            const muestrasPorPeriodo = audioCtx.sampleRate / currentFundamentalFreq;
+            // Asegurar que el período calculado quepa dentro de nuestro búfer capturado
+            if (muestrasPorPeriodo < waveBuffer - triggerIndex) {
+                ventanaMuestras = muestrasPorPeriodo;
+            }
+        }
+
+        // Dibujar la forma de onda calculada
         waveCtx.lineWidth = 2;
-        waveCtx.strokeStyle = '#ff9f43'; // Naranja para diferenciarlo
+        waveCtx.strokeStyle = '#ff9f43';
         waveCtx.beginPath();
 
-        const sliceWidth = wWidth * 1.0 / waveBuffer;
+        const incrementoX = wWidth / ventanaMuestras;
         let xWave = 0;
 
-        for(let i = 0; i < waveBuffer; i++) {
-            const v = waveData[i] / 128.0; // 128 es el centro de la fase (silencio)
+        for (let i = 0; i < ventanaMuestras; i++) {
+            const idxData = triggerIndex + i;
+            if (idxData >= waveBuffer) break;
+
+            const v = waveData[idxData] / 128.0; // Normalizar señal respecto al centro
             const y = v * (wHeight / 2);
 
-            if(i === 0) {
+            if (i === 0) {
                 waveCtx.moveTo(xWave, y);
             } else {
                 waveCtx.lineTo(xWave, y);
             }
-
-            xWave += sliceWidth;
+            xWave += incrementoX;
         }
         waveCtx.stroke();
+
+        // Indicador de modo en el Osciloscopio
+        waveCtx.fillStyle = '#777';
+        waveCtx.font = '10px monospace';
+        waveCtx.fillText('Osciloscopio: 1 Período Sincronizado', 5, 15);
     }
-    
-    // Iniciar el ciclo de dibujo
+
+    // Ejecutar el nuevo bucle de animación unificado
     drawVisualizers();
 
     // Generador de Curva para Overdrive
@@ -481,6 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         initAudio();
         const freq = parseFloat(keyEl.getAttribute('data-freq'));
+        currentFundamentalFreq = freq; // <-- AÑADE ESTA LÍNEA AQUÍ
         keyEl.classList.add('active');
         const t = audioCtx.currentTime;
 
