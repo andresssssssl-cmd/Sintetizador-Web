@@ -155,10 +155,65 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `).join('');
 
+    // INYECCIÓN DINÁMICA DE LOS CONTROLES MONO/POLY
+    document.getElementById('keyboard').insertAdjacentHTML('beforebegin', `
+        <div class="voicing-section" style="background:#151518; border: 1px solid #333; border-radius: 4px; padding: 10px; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+            <strong style="color:#ff9f43; margin-right: 10px;">MODO:</strong>
+            <label style="cursor:pointer;"><input type="radio" name="voicing" value="poly" checked> Poly</label>
+            <label style="cursor:pointer;"><input type="radio" name="voicing" value="mono"> Mono</label>
+            <div id="mono-settings" style="display: none; gap: 15px; align-items: center; border-left: 1px solid #444; padding-left: 15px; margin-left: 5px;">
+                <label>Glide (<span class="val">0.10</span>s) <input type="range" id="mono-glide" min="0" max="2" step="0.01" value="0.10"></label>
+                <label style="cursor:pointer;"><input type="checkbox" id="mono-retrigger"> Retrigger</label>
+                <label style="cursor:pointer;"><input type="checkbox" id="mono-fingered" checked> Fingered</label>
+            </div>
+        </div>
+    `);
+
+    // Utilidad para actualizar parámetros en vivo (tanto para Mono como Poly)
+    function updateLiveParams(chains, targetId, now) {
+        chains.forEach(chain => {
+            if (targetId.startsWith(chain.prefix)) {
+                const p = getParams(chain.prefix);
+                if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
+                if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
+                if (!chain.isNoise && chain.source) {
+                    const pitchShift = p.semi + (p.cents / 100);
+                    chain.source.frequency.setTargetAtTime(chain.baseFreq * Math.pow(2, pitchShift / 12), now, 0.05);
+                }
+                if (chain.lfo) {
+                    chain.lfo.frequency.setTargetAtTime(p.lfoRt, now, 0.05);
+                    if (chain.lfoGain) {
+                        let newDepth = 0;
+                        if (p.lfoTgt === 'pitch') newDepth = p.lfoDp * 5;
+                        else if (p.lfoTgt === 'lp') newDepth = p.lfoDp * 50;
+                        else if (p.lfoTgt === 'hp') newDepth = p.lfoDp * 50;
+                        else if (p.lfoTgt === 'vol') newDepth = p.lfoDp / 100;
+                        else if (p.lfoTgt === 'pan') newDepth = p.lfoDp / 100;
+                        chain.lfoGain.gain.setTargetAtTime(newDepth, now, 0.05);
+                    }
+                }
+            }
+        });
+    }
+
     document.addEventListener('input', e => {
         if (e.target.type === 'range') {
             const span = e.target.parentElement.querySelector('.val');
             if (span) span.innerText = e.target.value;
+        }
+
+        // Lógica de visualización del panel Mono
+        if (e.target.name === 'voicing') {
+            synthMode = e.target.value;
+            const monoSettings = document.getElementById('mono-settings');
+            if (monoSettings) monoSettings.style.display = synthMode === 'mono' ? 'flex' : 'none';
+            
+            // Cortar notas Mono si se regresa a Poly de golpe
+            if (synthMode === 'poly' && monoChains) {
+                monoChains.forEach(c => { try { c.source.stop(); c.source.disconnect(); } catch(err){} });
+                monoChains = null;
+                heldNotes = [];
+            }
         }
 
         if (e.target.id === 'master-vol') {
@@ -177,34 +232,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const now = audioCtx.currentTime;
+            // Actualizar voces Poly
             Object.values(activeVoices).forEach(chains => {
-                chains.forEach(chain => {
-                    if (e.target.id.startsWith(chain.prefix)) {
-                        const p = getParams(chain.prefix);
-                        
-                        if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
-                        if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
-                        
-                        if (!chain.isNoise && chain.source) {
-                            const pitchShift = p.semi + (p.cents / 100);
-                            chain.source.frequency.setTargetAtTime(chain.baseFreq * Math.pow(2, pitchShift / 12), now, 0.05);
-                        }
-
-                        if (chain.lfo) {
-                            chain.lfo.frequency.setTargetAtTime(p.lfoRt, now, 0.05);
-                            if (chain.lfoGain) {
-                                let newDepth = 0;
-                                if (p.lfoTgt === 'pitch') newDepth = p.lfoDp * 5;
-                                else if (p.lfoTgt === 'lp') newDepth = p.lfoDp * 50;
-                                else if (p.lfoTgt === 'hp') newDepth = p.lfoDp * 50;
-                                else if (p.lfoTgt === 'vol') newDepth = p.lfoDp / 100;
-                                else if (p.lfoTgt === 'pan') newDepth = p.lfoDp / 100;
-                                chain.lfoGain.gain.setTargetAtTime(newDepth, now, 0.05);
-                            }
-                        }
-                    }
-                });
+                updateLiveParams(chains, e.target.id, now);
             });
+            // Actualizar voces Mono
+            if (monoChains) {
+                updateLiveParams(monoChains, e.target.id, now);
+            }
         }
     });
 
@@ -213,8 +248,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ==========================================
     let audioCtx, masterGain, analyser, whiteNoiseBuffer, pinkNoiseBuffer;
     let currentFundamentalFreq = 0;
+    
+    // Variables de Estado (Poly vs Mono)
     const activeVoices = {};
     const busses = {};
+    let synthMode = 'poly';
+    let heldNotes = []; 
+    let monoChains = null; 
 
     const canvas = document.getElementById('rta-canvas');
     const canvasCtx = canvas.getContext('2d');
@@ -310,8 +350,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(waveData[i] < minVal) minVal = waveData[i];
             if(waveData[i] > maxVal) maxVal = waveData[i];
         }
+        
         let peak = Math.max(Math.abs(maxVal - 128), Math.abs(minVal - 128));
-        let scaleY = peak === 0 ? 1 : ((wHeight / 2) * 0.9) / peak;
+        // CORRECCIÓN: Umbral estricto para no amplificar visualmente el ruido de fondo
+        let scaleY = peak < 10 ? 1 : ((wHeight / 2) * 0.9) / peak;
 
         let triggerIndex = 0;
         for (let i = 0; i < waveBuffer / 2; i++) {
@@ -402,16 +444,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = audioCtx.createGain();
         const output = audioCtx.createGain();
 
-        // BLINDAJE 1: Conexiones aisladas para evitar errores de ruteo en el navegador
         function createInsertFx() {
             const inNode = audioCtx.createGain();
             const outNode = audioCtx.createGain();
             const dry = audioCtx.createGain();
             const wet = audioCtx.createGain();
-            
             inNode.connect(dry);
             dry.connect(outNode);
-            
             return { in: inNode, out: outNode, dry, wet };
         }
 
@@ -438,7 +477,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const flgNode = createInsertFx();
         const flanger = audioCtx.createDelay(2.0); 
-        // BLINDAJE 2: Asignar un tiempo base al flanger para que el LFO no lo baje a números negativos
         flanger.delayTime.value = 0.005;
         const fLfo = audioCtx.createOscillator(); fLfo.start();
         const fDepth = audioCtx.createGain();
@@ -511,7 +549,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 flgNode.wet.gain.value = p.flgMix; 
                 flgNode.dry.gain.value = 1 - p.flgMix;
 
-                // BLINDAJE 3: Prevenir colapso por tiempos fuera de límite
                 delayNode.delayTime.value = Math.max(0.01, Math.min(p.dlyTm, 5.0));
                 dlyFb.gain.value = p.dlyFb;
                 dlyHc.frequency.value = Math.max(20, Math.min(p.dlyHc, 20000));
@@ -619,7 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filterHP = audioCtx.createBiquadFilter();
         filterHP.type = 'highpass'; 
-        // BLINDAJE 4: Proteger de valores NaN y evitar desbordes
         filterHP.frequency.value = Math.max(20, Math.min(params.hp, 20000));
 
         const filterLP = audioCtx.createBiquadFilter();
@@ -663,7 +699,6 @@ document.addEventListener('DOMContentLoaded', () => {
             lfo.start(t);
         }
 
-        // Conexiones individuales
         source.connect(filterHP);
         filterHP.connect(filterLP);
         filterLP.connect(envGain);
@@ -675,50 +710,142 @@ document.addEventListener('DOMContentLoaded', () => {
         return { source, envGain, lfo, lfoGain, lfoModGain, filterLP, filterHP, panner, baseFreq, r: params.r, prefix, isNoise };
     }
 
-    function playNote(char) {
-        if (activeVoices[char]) return;
-        const keyEl = document.querySelector(`.key[data-char="${char}"]`);
-        if (!keyEl) return;
+    // CORRECCIÓN: Motor principal reescrito para soportar Mono (Legato) y Poly
+    function playNote(charId, explicitFreq = null) {
+        let freq = explicitFreq;
+        const keyEl = document.querySelector(`.key[data-char="${charId}"]`);
+        
+        if (!freq) {
+            if (!keyEl) return;
+            freq = parseFloat(keyEl.getAttribute('data-freq'));
+        }
+        
+        if (keyEl) keyEl.classList.add('active');
         
         initAudio();
-        const freq = parseFloat(keyEl.getAttribute('data-freq'));
-        currentFundamentalFreq = freq; 
-        keyEl.classList.add('active');
+        currentFundamentalFreq = freq;
         const t = audioCtx.currentTime;
 
-        const chains = [
-            buildModuleChain(t, freq, getParams('o1'), 'o1'),
-            buildModuleChain(t, freq, getParams('o2'), 'o2'),
-            buildModuleChain(t, freq, getParams('o3'), 'o3'),
-            buildModuleChain(t, freq, getParams('n'), 'n', true)
-        ].filter(c => c !== null); 
+        if (synthMode === 'poly') {
+            if (activeVoices[charId]) return;
+            const chains = [
+                buildModuleChain(t, freq, getParams('o1'), 'o1'),
+                buildModuleChain(t, freq, getParams('o2'), 'o2'),
+                buildModuleChain(t, freq, getParams('o3'), 'o3'),
+                buildModuleChain(t, freq, getParams('n'), 'n', true)
+            ].filter(c => c !== null); 
+            activeVoices[charId] = chains;
+        } else {
+            // Lógica Monofónica
+            heldNotes = heldNotes.filter(n => n.id !== charId); 
+            heldNotes.push({ id: charId, freq: freq });
+            
+            const glideTime = parseFloat(document.getElementById('mono-glide').value);
+            const isRetrigger = document.getElementById('mono-retrigger').checked;
+            const isFingered = document.getElementById('mono-fingered').checked;
 
-        activeVoices[char] = chains;
+            if (!monoChains) {
+                monoChains = [
+                    buildModuleChain(t, freq, getParams('o1'), 'o1'),
+                    buildModuleChain(t, freq, getParams('o2'), 'o2'),
+                    buildModuleChain(t, freq, getParams('o3'), 'o3'),
+                    buildModuleChain(t, freq, getParams('n'), 'n', true)
+                ].filter(c => c !== null);
+            } else {
+                const actualGlide = (isFingered && heldNotes.length === 1) ? 0.005 : glideTime;
+                
+                monoChains.forEach(chain => {
+                    chain.baseFreq = freq;
+                    if (!chain.isNoise && chain.source) {
+                        const p = getParams(chain.prefix);
+                        const pitchShift = p.semi + (p.cents / 100);
+                        const finalFreq = freq * Math.pow(2, pitchShift / 12);
+                        chain.source.frequency.cancelScheduledValues(t);
+                        chain.source.frequency.setTargetAtTime(finalFreq, t, Math.max(0.005, actualGlide / 3)); 
+                    }
+                    if (isRetrigger) {
+                        const p = getParams(chain.prefix);
+                        chain.envGain.gain.cancelScheduledValues(t);
+                        chain.envGain.gain.setValueAtTime(0, t);
+                        chain.envGain.gain.linearRampToValueAtTime(p.vol, t + p.a);
+                        chain.envGain.gain.linearRampToValueAtTime(p.vol * p.s, t + p.a + p.d);
+                    }
+                });
+            }
+        }
     }
 
-    function stopNote(char) {
-        if (!activeVoices[char]) return;
-        const chains = activeVoices[char];
-        const now = audioCtx.currentTime;
-        let maxRelease = 0;
-
-        chains.forEach(chain => {
-            chain.envGain.gain.cancelScheduledValues(now);
-            chain.envGain.gain.setTargetAtTime(0, now, chain.r / 5); 
-            if (chain.r > maxRelease) maxRelease = chain.r;
-        });
-
-        setTimeout(() => {
-            chains.forEach(chain => {
-                try { chain.source.stop(); } catch(e){}
-                if(chain.lfo) try { chain.lfo.stop(); } catch(e){}
-                try { chain.source.disconnect(); chain.envGain.disconnect(); chain.lfoModGain.disconnect(); } catch(e){}
-            });
-        }, maxRelease * 1000 + 200);
-
-        delete activeVoices[char];
-        const keyEl = document.querySelector(`.key[data-char="${char}"]`);
+    function stopNote(charId) {
+        const keyEl = document.querySelector(`.key[data-char="${charId}"]`);
         if(keyEl) keyEl.classList.remove('active');
+        
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        if (synthMode === 'poly') {
+            if (!activeVoices[charId]) return;
+            const chains = activeVoices[charId];
+            let maxRelease = 0;
+
+            chains.forEach(chain => {
+                chain.envGain.gain.cancelScheduledValues(now);
+                chain.envGain.gain.setTargetAtTime(0, now, chain.r / 5); 
+                if (chain.r > maxRelease) maxRelease = chain.r;
+            });
+
+            setTimeout(() => {
+                chains.forEach(chain => {
+                    try { chain.source.stop(); } catch(e){}
+                    if(chain.lfo) try { chain.lfo.stop(); } catch(e){}
+                    try { chain.source.disconnect(); chain.envGain.disconnect(); chain.lfoModGain.disconnect(); } catch(e){}
+                });
+            }, maxRelease * 1000 + 200);
+
+            delete activeVoices[charId];
+        } else {
+            // Lógica Monofónica
+            heldNotes = heldNotes.filter(n => n.id !== charId);
+            
+            if (heldNotes.length === 0) {
+                if (monoChains) {
+                    const chainsToStop = monoChains;
+                    monoChains = null;
+                    let maxRelease = 0;
+                    chainsToStop.forEach(chain => {
+                        chain.envGain.gain.cancelScheduledValues(now);
+                        chain.envGain.gain.setTargetAtTime(0, now, chain.r / 5); 
+                        if (chain.r > maxRelease) maxRelease = chain.r;
+                    });
+                    setTimeout(() => {
+                        chainsToStop.forEach(chain => {
+                            try { chain.source.stop(); } catch(e){}
+                            if(chain.lfo) try { chain.lfo.stop(); } catch(e){}
+                            try { chain.source.disconnect(); chain.envGain.disconnect(); chain.lfoModGain.disconnect(); } catch(e){}
+                        });
+                    }, maxRelease * 1000 + 200);
+                }
+            } else {
+                // Hay notas debajo siendo sostenidas, hacer glide de regreso
+                const prevNote = heldNotes[heldNotes.length - 1];
+                currentFundamentalFreq = prevNote.freq;
+                const glideTime = parseFloat(document.getElementById('mono-glide').value);
+                const isFingered = document.getElementById('mono-fingered').checked;
+                const actualGlide = isFingered ? glideTime : 0.005; 
+                
+                if (monoChains) {
+                    monoChains.forEach(chain => {
+                        chain.baseFreq = prevNote.freq;
+                        if (!chain.isNoise && chain.source) {
+                            const p = getParams(chain.prefix);
+                            const pitchShift = p.semi + (p.cents / 100);
+                            const finalFreq = prevNote.freq * Math.pow(2, pitchShift / 12);
+                            chain.source.frequency.cancelScheduledValues(now);
+                            chain.source.frequency.setTargetAtTime(finalFreq, now, Math.max(0.005, actualGlide / 3)); 
+                        }
+                    });
+                }
+            }
+        }
     }
 
     // ==========================================
@@ -742,19 +869,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('mouseup', (e) => {
-        if ((e.target.tagName === 'INPUT' && e.target.type === 'range') || e.target.tagName === 'SELECT') {
+        // CORRECCIÓN: Solo quitar foco a los deslizadores (inputs tipo range)
+        if (e.target.tagName === 'INPUT' && e.target.type === 'range') {
+            e.target.blur(); 
+        }
+    });
+
+    document.addEventListener('change', (e) => {
+        // CORRECCIÓN: Los selectores se desenfocan al elegirlos, no al dar clic
+        if (e.target.tagName === 'SELECT' || e.target.type === 'radio' || e.target.type === 'checkbox') {
             e.target.blur(); 
         }
     });
 
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
-        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password' || e.target.type === 'number')) return;
         playNote(e.key.toLowerCase());
     });
 
     window.addEventListener('keyup', e => {
-        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password' || e.target.type === 'number')) return;
         stopNote(e.key.toLowerCase());
     });
 
@@ -781,20 +916,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const note = message.data[1];
         const velocity = (message.data.length > 2) ? message.data[2] : 0;
 
+        // CORRECCIÓN: ID universal y Frecuencia matemática para soportar TODAS las octavas
+        const voiceKey = 'midi-' + note;
+        const freq = 440 * Math.pow(2, (note - 69) / 12);
+
+        // Mapeo opcional para iluminar las teclas virtuales si están en el rango
         const midiMap = {
             48: 'z', 49: 's', 50: 'x', 51: 'd', 52: 'c', 53: 'v', 54: 'g', 55: 'b',
             56: 'h', 57: 'n', 58: 'j', 59: 'm', 60: 'q', 61: '2', 62: 'w', 63: '3',
             64: 'e', 65: 'r', 66: '5', 67: 't', 68: '6', 69: 'y', 70: '7', 71: 'u', 72: 'i'
         };
-
-        const char = midiMap[note];
-        if (!char) return; 
+        const mappedChar = midiMap[note];
 
         if (command === 144 && velocity > 0) {
-            playNote(char);
+            playNote(mappedChar || voiceKey, freq);
         } 
         else if (command === 128 || (command === 144 && velocity === 0)) {
-            stopNote(char);
+            stopNote(mappedChar || voiceKey);
         }
     }
 });
