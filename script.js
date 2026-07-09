@@ -417,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         key.addEventListener('touchend', (e) => { e.preventDefault(); stopNote(char); });
     });
 
-    window.addEventListener('keydown', e => {
+   window.addEventListener('keydown', e => {
         if (e.repeat) return;
         
         // CORRECCIÓN: Solo ignorar el teclado físico si se está escribiendo texto
