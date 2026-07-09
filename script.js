@@ -51,49 +51,90 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <div class="tab-panel hidden" id="panel-${m.id}-fx">
-                <h4>Efectos</h4>
-                <label>Overdrive (<span class="val">0</span>) <input type="range" id="${m.id}-drv" min="0" max="100" step="1" value="0"></label>
-                <label>Phaser Mix (<span class="val">0</span>) <input type="range" id="${m.id}-phs" min="0" max="1" step="0.01" value="0"></label>
-                <label>Flanger Mix (<span class="val">0</span>) <input type="range" id="${m.id}-flg" min="0" max="1" step="0.01" value="0"></label>
-                <label>Delay Mix (<span class="val">0</span>) <input type="range" id="${m.id}-dly" min="0" max="1" step="0.01" value="0"></label>
-                <label>Reverb Mix (<span class="val">0</span>) <input type="range" id="${m.id}-rev" min="0" max="1" step="0.01" value="0"></label>
+                <div class="fx-tabs">
+                    <button type="button" class="fx-tab-btn active" data-fxtab="rev">Reverb</button>
+                    <button type="button" class="fx-tab-btn" data-fxtab="dly">Delay</button>
+                    <button type="button" class="fx-tab-btn" data-fxtab="phs">Phaser</button>
+                    <button type="button" class="fx-tab-btn" data-fxtab="flg">Flanger</button>
+                    <button type="button" class="fx-tab-btn" data-fxtab="od">OD</button>
+                </div>
+                
+                <div class="fx-panel" id="fx-${m.id}-rev">
+                    <label>Tipo: <select id="${m.id}-rev-typ"><option value="hall">Hall</option><option value="plate">Plate</option><option value="room">Room</option><option value="ambience">Ambience</option><option value="spring">Spring</option></select></label>
+                    <label>Time (<span class="val">2</span>s) <input type="range" id="${m.id}-rev-tm" min="0.1" max="10" step="0.1" value="2"></label>
+                    <label>Pre-Delay (<span class="val">0</span>s) <input type="range" id="${m.id}-rev-pd" min="0" max="0.2" step="0.01" value="0"></label>
+                    <label>Low Cut (<span class="val">100</span>Hz) <input type="range" id="${m.id}-rev-lc" min="20" max="1000" step="10" value="100"></label>
+                    <label>High Cut (<span class="val">10000</span>Hz) <input type="range" id="${m.id}-rev-hc" min="1000" max="20000" step="100" value="10000"></label>
+                    <label>Mix (<span class="val">0</span>) <input type="range" id="${m.id}-rev-mix" min="0" max="1" step="0.01" value="0"></label>
+                </div>
+
+                <div class="fx-panel hidden" id="fx-${m.id}-dly">
+                    <label>Tipo: <select id="${m.id}-dly-typ"><option value="mono">Mono</option><option value="stereo">Stereo</option><option value="pan">Pan</option></select></label>
+                    <label>Time (<span class="val">0.33</span>s) <input type="range" id="${m.id}-dly-tm" min="0.01" max="2" step="0.01" value="0.33"></label>
+                    <label>Feedback (<span class="val">0.4</span>) <input type="range" id="${m.id}-dly-fb" min="0" max="0.95" step="0.01" value="0.4"></label>
+                    <label>High Cut (<span class="val">5000</span>Hz) <input type="range" id="${m.id}-dly-hc" min="500" max="20000" step="100" value="5000"></label>
+                    <label>Mix (<span class="val">0</span>) <input type="range" id="${m.id}-dly-mix" min="0" max="1" step="0.01" value="0"></label>
+                </div>
+
+                <div class="fx-panel hidden" id="fx-${m.id}-phs">
+                    <label>Rate (<span class="val">1</span>Hz) <input type="range" id="${m.id}-phs-rt" min="0.1" max="10" step="0.1" value="1"></label>
+                    <label>Depth (<span class="val">800</span>) <input type="range" id="${m.id}-phs-dp" min="100" max="2000" step="10" value="800"></label>
+                    <label>Feedback (<span class="val">0.5</span>) <input type="range" id="${m.id}-phs-fb" min="0" max="0.9" step="0.01" value="0.5"></label>
+                    <label>Mix (<span class="val">0</span>) <input type="range" id="${m.id}-phs-mix" min="0" max="1" step="0.01" value="0"></label>
+                </div>
+
+                <div class="fx-panel hidden" id="fx-${m.id}-flg">
+                    <label>Rate (<span class="val">0.5</span>Hz) <input type="range" id="${m.id}-flg-rt" min="0.1" max="5" step="0.1" value="0.5"></label>
+                    <label>Depth (<span class="val">0.003</span>) <input type="range" id="${m.id}-flg-dp" min="0.001" max="0.01" step="0.001" value="0.003"></label>
+                    <label>Feedback (<span class="val">0.5</span>) <input type="range" id="${m.id}-flg-fb" min="0" max="0.9" step="0.01" value="0.5"></label>
+                    <label>Mix (<span class="val">0</span>) <input type="range" id="${m.id}-flg-mix" min="0" max="1" step="0.01" value="0"></label>
+                </div>
+
+                <div class="fx-panel hidden" id="fx-${m.id}-od">
+                    <label>Saturación (<span class="val">0</span>) <input type="range" id="${m.id}-od-drv" min="0" max="100" step="1" value="0"></label>
+                    <label>Mix (<span class="val">0</span>) <input type="range" id="${m.id}-od-mix" min="0" max="1" step="0.01" value="0"></label>
+                </div>
             </div>
 
             <div class="tab-panel hidden" id="panel-${m.id}-lfo">
                 <h4>LFO</h4>
-                <label>Destino: <select id="${m.id}-lfo-tgt">
-                    <option value="none">Off</option>
-                    ${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}
-                    <option value="lp">Cutoff LP</option>
-                    <option value="hp">Cutoff HP</option>
-                    <option value="vol">Volumen</option>
-                    <option value="pan">Paneo</option>
-                </select></label>
+                <label>Destino: <select id="${m.id}-lfo-tgt"><option value="none">Off</option>${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}<option value="lp">Cutoff LP</option><option value="hp">Cutoff HP</option><option value="vol">Volumen</option><option value="pan">Paneo</option></select></label>
                 <label>Rate (<span class="val">5</span>Hz) <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
                 <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
             </div>
         </div>`;
     });
 
-    // Controlador lógico para conmutar las pestañas de forma independiente por módulo
+    // Controlador lógico unificado para Pestañas y Sub-Pestañas
     rack.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('tab-btn')) return;
+        // Pestañas Principales
+        if (e.target.classList.contains('tab-btn')) {
+            const clickedTab = e.target;
+            const moduleContainer = clickedTab.closest('.module');
+            const moduleId = moduleContainer.dataset.module;
+            const targetPanelType = clickedTab.dataset.tab;
 
-        const clickedTab = e.target;
-        const moduleContainer = clickedTab.closest('.module');
-        const moduleId = moduleContainer.dataset.module;
-        const targetPanelType = clickedTab.dataset.tab;
+            moduleContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            clickedTab.classList.add('active');
 
-        // Desactivar botones de pestañas únicamente dentro de este módulo
-        moduleContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        clickedTab.classList.add('active');
+            moduleContainer.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            const activePanel = moduleContainer.querySelector(`#panel-${moduleId}-${targetPanelType}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+        }
+        
+        // Sub-Pestañas de Efectos
+        if (e.target.classList.contains('fx-tab-btn')) {
+            const clickedTab = e.target;
+            const fxContainer = clickedTab.closest('.tab-panel');
+            const moduleId = clickedTab.closest('.module').dataset.module;
+            const targetFxType = clickedTab.dataset.fxtab;
 
-        // Ocultar todos los paneles correspondientes a este módulo
-        moduleContainer.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            fxContainer.querySelectorAll('.fx-tab-btn').forEach(btn => btn.classList.remove('active'));
+            clickedTab.classList.add('active');
 
-        // Mostrar el panel seleccionado por su id estructurado
-        const activePanel = moduleContainer.querySelector(`#panel-${moduleId}-${targetPanelType}`);
-        if (activePanel) activePanel.classList.remove('hidden');
+            fxContainer.querySelectorAll('.fx-panel').forEach(panel => panel.classList.add('hidden'));
+            fxContainer.querySelector(`#fx-${moduleId}-${targetFxType}`).classList.remove('hidden');
+        }
     });
     
     const keyMap = [
@@ -360,15 +401,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return curve;
     }
 
-    // Generador de Respuesta de Impulso para Reverb
-    function createReverbIR() {
+    // Generador Dinámico de Respuesta de Impulso para Reverb
+    function createReverbIR(type, time) {
+        if (!audioCtx) return null;
         const sampleRate = audioCtx.sampleRate;
-        const length = sampleRate * 2.0; 
+        const length = Math.max(0.1, sampleRate * time); 
         const impulse = audioCtx.createBuffer(2, length, sampleRate);
+        
         for (let i = 0; i < 2; i++) {
             const channel = impulse.getChannelData(i);
             for (let j = 0; j < length; j++) {
-                channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 3);
+                let n = (Math.random() * 2 - 1); // Ruido blanco base
+                
+                // Algoritmos de emulación acústica por tipo
+                if (type === 'spring') n *= Math.sin(j * 0.05) * Math.exp(-j / length * 10);
+                else if (type === 'plate') n *= (Math.random() > 0.5 ? 1 : -1); 
+                else if (type === 'room') n *= Math.exp(-j / (length * 0.5)); 
+                
+                // Envolvente general de decaimiento
+                let env = Math.pow(1 - j / length, type === 'ambience' ? 4 : 2);
+                channel[j] = n * env;
             }
         }
         return impulse;
@@ -393,75 +445,118 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Creación de Bus FX Maestro por Oscilador
+    // Creación Avanzada de Bus FX Maestro por Oscilador
     function createBus(id) {
         const input = audioCtx.createGain();
         const output = audioCtx.createGain();
 
+        // Utilidad interna para crear ruteos Dry/Wet en serie (OD, Phaser, Flanger)
+        function createInsertFx() {
+            const inNode = audioCtx.createGain();
+            const outNode = audioCtx.createGain();
+            const dry = audioCtx.createGain();
+            const wet = audioCtx.createGain();
+            inNode.connect(dry).connect(outNode);
+            return { in: inNode, out: outNode, dry, wet };
+        }
+
+        // --- EFECTOS EN SERIE (Insertos) ---
         // 1. Overdrive
+        const odNode = createInsertFx();
         const drive = audioCtx.createWaveShaper();
-        drive.curve = makeDistortionCurve(0);
-        input.connect(drive);
+        odNode.in.connect(drive).connect(odNode.wet).connect(odNode.out);
+        input.connect(odNode.in);
 
-        // 2. Phaser (Blend)
-        const phaserDry = audioCtx.createGain();
-        const phaserWet = audioCtx.createGain(); phaserWet.gain.value = 0;
-        const phaser = audioCtx.createBiquadFilter();
-        phaser.type = 'allpass'; phaser.frequency.value = 1000;
-        const pLfo = audioCtx.createOscillator(); pLfo.frequency.value = 1;
-        const pDepth = audioCtx.createGain(); pDepth.gain.value = 800;
-        pLfo.connect(pDepth).connect(phaser.frequency); pLfo.start();
+        // 2. Phaser
+        const phsNode = createInsertFx();
+        const phaser = audioCtx.createBiquadFilter(); phaser.type = 'allpass';
+        const pLfo = audioCtx.createOscillator(); pLfo.start();
+        const pDepth = audioCtx.createGain();
+        const phsFb = audioCtx.createGain();
+        pLfo.connect(pDepth).connect(phaser.frequency);
+        odNode.out.connect(phsNode.in).connect(phaser);
+        phaser.connect(phsNode.wet).connect(phsNode.out);
+        phaser.connect(phsFb).connect(phaser); // Bucle Feedback
 
-        drive.connect(phaserDry);
-        drive.connect(phaser); phaser.connect(phaserWet);
+        // 3. Flanger
+        const flgNode = createInsertFx();
+        const flanger = audioCtx.createDelay(0.02);
+        const fLfo = audioCtx.createOscillator(); fLfo.start();
+        const fDepth = audioCtx.createGain();
+        const flgFb = audioCtx.createGain();
+        fLfo.connect(fDepth).connect(flanger.delayTime);
+        phsNode.out.connect(flgNode.in).connect(flanger);
+        flanger.connect(flgNode.wet).connect(flgNode.out);
+        flanger.connect(flgFb).connect(flanger); // Bucle Feedback
+        
+        flgNode.out.connect(output); // Salida del bloque en serie al master
 
-        const postPhaser = audioCtx.createGain();
-        phaserDry.connect(postPhaser); phaserWet.connect(postPhaser);
+        // --- EFECTOS EN PARALELO (Envíos) ---
+        const sendNode = flgNode.out;
 
-        // 3. Flanger (Blend)
-        const flangerDry = audioCtx.createGain();
-        const flangerWet = audioCtx.createGain(); flangerWet.gain.value = 0;
-        const flanger = audioCtx.createDelay(); flanger.delayTime.value = 0.005;
-        const fLfo = audioCtx.createOscillator(); fLfo.frequency.value = 0.5;
-        const fDepth = audioCtx.createGain(); fDepth.gain.value = 0.003;
-        fLfo.connect(fDepth).connect(flanger.delayTime); fLfo.start();
+        // 4. Delay Multimodo
+        const dlyIn = audioCtx.createGain();
+        const dlyWet = audioCtx.createGain();
+        const delayNode = audioCtx.createDelay(5.0);
+        const dlyFb = audioCtx.createGain();
+        const dlyHc = audioCtx.createBiquadFilter(); dlyHc.type = 'lowpass';
+        const dlyPan = audioCtx.createStereoPanner();
+        
+        sendNode.connect(dlyIn).connect(delayNode);
+        delayNode.connect(dlyHc).connect(dlyFb).connect(delayNode); // Filtro dentro del feedback
+        delayNode.connect(dlyPan).connect(dlyWet).connect(output);
 
-        postPhaser.connect(flangerDry);
-        postPhaser.connect(flanger); flanger.connect(flangerWet);
+        // 5. Reverb Paramétrico
+        const revIn = audioCtx.createGain();
+        const revWet = audioCtx.createGain();
+        const preDelay = audioCtx.createDelay(1.0);
+        const revLc = audioCtx.createBiquadFilter(); revLc.type = 'highpass';
+        const revHc = audioCtx.createBiquadFilter(); revHc.type = 'lowpass';
+        const convolver = audioCtx.createConvolver();
+        
+        sendNode.connect(revIn).connect(preDelay).connect(revLc).connect(revHc).connect(convolver).connect(revWet).connect(output);
 
-        const postFlanger = audioCtx.createGain();
-        flangerDry.connect(postFlanger); flangerWet.connect(postFlanger);
-
-        // 4. Delay & Reverb (Sends)
-        const fxSend = audioCtx.createGain();
-        postFlanger.connect(fxSend);
-        postFlanger.connect(output); 
-
-        // Delay
-        const delay = audioCtx.createDelay(); delay.delayTime.value = 0.33;
-        const delayFb = audioCtx.createGain(); delayFb.gain.value = 0.4;
-        delay.connect(delayFb).connect(delay);
-        const delayWet = audioCtx.createGain(); delayWet.gain.value = 0;
-        fxSend.connect(delay); delay.connect(delayWet); delayWet.connect(output);
-
-        // Reverb
-        const reverb = audioCtx.createConvolver();
-        reverb.buffer = audioCtx.reverbBuffer;
-        const reverbWet = audioCtx.createGain(); reverbWet.gain.value = 0;
-        fxSend.connect(reverb); reverb.connect(reverbWet); reverbWet.connect(output);
-
-        output.connect(masterGain);
-
+        // Memoria de estado para no regenerar el IR innecesariamente
+        let currentRevState = { typ: '', tm: 0 };
+        
         return {
             input,
-            update: (params) => {
-                drive.curve = makeDistortionCurve(params.drv);
-                phaserWet.gain.value = params.phs;
-                phaserDry.gain.value = 1 - params.phs;
-                flangerWet.gain.value = params.flg;
-                flangerDry.gain.value = 1 - params.flg;
-                delayWet.gain.value = params.dly;
-                reverbWet.gain.value = params.rev;
+            update: (p) => {
+                // OD
+                drive.curve = makeDistortionCurve(p.odDrv);
+                odNode.wet.gain.value = p.odMix; odNode.dry.gain.value = 1 - p.odMix;
+                
+                // Phaser
+                pLfo.frequency.value = p.phsRt; pDepth.gain.value = p.phsDp;
+                phsFb.gain.value = p.phsFb;
+                phsNode.wet.gain.value = p.phsMix; phsNode.dry.gain.value = 1 - p.phsMix;
+
+                // Flanger
+                fLfo.frequency.value = p.flgRt; fDepth.gain.value = p.flgDp;
+                flgFb.gain.value = p.flgFb;
+                flgNode.wet.gain.value = p.flgMix; flgNode.dry.gain.value = 1 - p.flgMix;
+
+                // Delay
+                delayNode.delayTime.value = p.dlyTm;
+                dlyFb.gain.value = p.dlyFb;
+                dlyHc.frequency.value = p.dlyHc;
+                dlyWet.gain.value = p.dlyMix;
+                if(p.dlyTyp === 'mono') dlyPan.pan.value = 0;
+                else if(p.dlyTyp === 'stereo') dlyPan.pan.value = 0.5; // Apertura espacial
+                else if(p.dlyTyp === 'pan') dlyPan.pan.value = -0.8; // Simulación asimétrica ping-pong
+                
+                // Reverb
+                preDelay.delayTime.value = p.revPd;
+                revLc.frequency.value = p.revLc;
+                revHc.frequency.value = p.revHc;
+                revWet.gain.value = p.revMix;
+
+                // Regenerar el motor de Convolución únicamente si cambiaste el Tipo o el Tiempo
+                if (p.revTyp !== currentRevState.typ || p.revTm !== currentRevState.tm) {
+                    convolver.buffer = createReverbIR(p.revTyp, p.revTm);
+                    currentRevState.typ = p.revTyp;
+                    currentRevState.tm = p.revTm;
+                }
             }
         };
     }
@@ -508,11 +603,27 @@ document.addEventListener('DOMContentLoaded', () => {
             d: getVal(`${prefix}-d`, 0.3),
             s: getVal(`${prefix}-s`, 0.5),
             r: getVal(`${prefix}-r`, 0.5),
-            drv: getVal(`${prefix}-drv`, 0),
-            phs: getVal(`${prefix}-phs`, 0),
-            flg: getVal(`${prefix}-flg`, 0),
-            dly: getVal(`${prefix}-dly`, 0),
-            rev: getVal(`${prefix}-rev`, 0),
+            odDrv: getVal(`${prefix}-od-drv`, 0),
+            odMix: getVal(`${prefix}-od-mix`, 0),
+            phsRt: getVal(`${prefix}-phs-rt`, 1),
+            phsDp: getVal(`${prefix}-phs-dp`, 800),
+            phsFb: getVal(`${prefix}-phs-fb`, 0.5),
+            phsMix: getVal(`${prefix}-phs-mix`, 0),
+            flgRt: getVal(`${prefix}-flg-rt`, 0.5),
+            flgDp: getVal(`${prefix}-flg-dp`, 0.003),
+            flgFb: getVal(`${prefix}-flg-fb`, 0.5),
+            flgMix: getVal(`${prefix}-flg-mix`, 0),
+            dlyTyp: getStr(`${prefix}-dly-typ`, 'mono'),
+            dlyTm: getVal(`${prefix}-dly-tm`, 0.33),
+            dlyFb: getVal(`${prefix}-dly-fb`, 0.4),
+            dlyHc: getVal(`${prefix}-dly-hc`, 5000),
+            dlyMix: getVal(`${prefix}-dly-mix`, 0),
+            revTyp: getStr(`${prefix}-rev-typ`, 'hall'),
+            revTm: getVal(`${prefix}-rev-tm`, 2),
+            revPd: getVal(`${prefix}-rev-pd`, 0),
+            revLc: getVal(`${prefix}-rev-lc`, 100),
+            revHc: getVal(`${prefix}-rev-hc`, 10000),
+            revMix: getVal(`${prefix}-rev-mix`, 0),
             lfoTgt: getStr(`${prefix}-lfo-tgt`, 'none'),
             lfoRt: getVal(`${prefix}-lfo-rt`, 5),
             lfoDp: getVal(`${prefix}-lfo-dp`, 50)
