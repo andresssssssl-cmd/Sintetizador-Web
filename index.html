@@ -45,10 +45,15 @@
     <div id="synth-app" class="hidden">
         <h1>Sintetizador Modular Avanzado</h1>
         
-        <div class="rta-container">
-            <canvas id="rta-canvas" width="800" height="120"></canvas>
+        <div class="visualizers-wrapper">
+            <div class="canvas-container">
+                <canvas id="rta-canvas" width="800" height="150"></canvas>
+            </div>
+            <div class="canvas-container">
+                <canvas id="wave-canvas" width="800" height="150"></canvas>
+            </div>
         </div>
-
+        
         <!-- NUEVO: Controles Maestros -->
        <div class="master-section">
             <label>Volumen Maestro (<span id="master-vol-val">0.7</span>)</label>
