@@ -61,7 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="tab-panel hidden" id="panel-${m.id}-lfo">
                 <h4>LFO</h4>
-                <label>Destino: <select id="${m.id}-lfo-tgt"><option value="none">Off</option>${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}<option value="lp">Cutoff LP</option><option value="vol">Volumen</option></select></label>
+                <label>Destino: <select id="${m.id}-lfo-tgt">
+                    <option value="none">Off</option>
+                    ${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}
+                    <option value="lp">Cutoff LP</option>
+                    <option value="hp">Cutoff HP</option>
+                    <option value="vol">Volumen</option>
+                    <option value="pan">Paneo</option>
+                </select></label>
                 <label>Rate (<span class="val">5</span>Hz) <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
                 <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
             </div>
@@ -162,7 +169,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 let newDepth = 0;
                                 if (p.lfoTgt === 'pitch') newDepth = p.lfoDp * 5;
                                 else if (p.lfoTgt === 'lp') newDepth = p.lfoDp * 50;
+                                else if (p.lfoTgt === 'hp') newDepth = p.lfoDp * 50;
                                 else if (p.lfoTgt === 'vol') newDepth = p.lfoDp / 100;
+                                else if (p.lfoTgt === 'pan') newDepth = p.lfoDp / 100;
                                 chain.lfoGain.gain.setTargetAtTime(newDepth, now, 0.05);
                             }
                         }
@@ -531,6 +540,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const filterLP = audioCtx.createBiquadFilter();
         filterLP.type = 'lowpass'; filterLP.frequency.value = params.lp;
 
+        // NUEVO NODO: Paneo Estéreo
+        const panner = audioCtx.createStereoPanner();
+        panner.pan.value = 0;
+
         const envGain = audioCtx.createGain();
         const lfoModGain = audioCtx.createGain();
 
@@ -545,15 +558,22 @@ document.addEventListener('DOMContentLoaded', () => {
             lfo.frequency.value = params.lfoRt;
             lfo.connect(lfoGain);
 
+            // NUEVAS RUTAS DE MODULACIÓN
             if (params.lfoTgt === 'pitch' && !isNoise) {
                 lfoGain.gain.value = params.lfoDp * 5; 
                 lfoGain.connect(source.frequency);
             } else if (params.lfoTgt === 'lp') {
                 lfoGain.gain.value = params.lfoDp * 50; 
                 lfoGain.connect(filterLP.frequency);
+            } else if (params.lfoTgt === 'hp') {
+                lfoGain.gain.value = params.lfoDp * 50; 
+                lfoGain.connect(filterHP.frequency);
             } else if (params.lfoTgt === 'vol') {
                 lfoGain.gain.value = params.lfoDp / 100;
                 lfoGain.connect(lfoModGain.gain);
+            } else if (params.lfoTgt === 'pan') {
+                lfoGain.gain.value = params.lfoDp / 100; 
+                lfoGain.connect(panner.pan);
             }
             lfo.start(t);
         }
@@ -562,12 +582,11 @@ document.addEventListener('DOMContentLoaded', () => {
         filterHP.connect(filterLP);
         filterLP.connect(envGain);
         envGain.connect(lfoModGain);
-        
-        // Conectar al Bus correspondiente en lugar del master
-        lfoModGain.connect(busses[prefix].input);
+        lfoModGain.connect(panner); // Pasa por el panner estéreo
+        panner.connect(busses[prefix].input); // Y entra al bus de efectos
 
         source.start(t);
-        return { source, envGain, lfo, lfoGain, lfoModGain, filterLP, filterHP, baseFreq, r: params.r, prefix, isNoise };
+        return { source, envGain, lfo, lfoGain, lfoModGain, filterLP, filterHP, panner, baseFreq, r: params.r, prefix, isNoise };
     }
 
     function playNote(char) {
