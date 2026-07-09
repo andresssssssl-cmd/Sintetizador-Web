@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'n', name: 'Ruido', isNoise: true, waveOpts: '<option value="white">Blanco</option><option value="pink">Rosa</option>', defVol: 0.0, defSemi: 0 }
     ];
 
-  const rack = document.getElementById('synth-rack');
+    const rack = document.getElementById('synth-rack');
     modulesData.forEach(m => {
         rack.innerHTML += `
         <div class="module ${m.isNoise ? 'noise' : ''}">
@@ -20,31 +20,31 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <label>Tipo: <select id="${m.id}-type">${m.waveOpts}</select></label>
-            <label>Volumen (<span class="val">${m.defVol}</span>) <input type="range" id="${m.id}-vol" min="0" max="1" step="0.01" value="${m.defVol}"></label>
+            <label>Volumen <input type="number" class="val-input" id="${m.id}-vol-num" min="0" max="1" step="0.01" value="${m.defVol}"> <input type="range" id="${m.id}-vol" min="0" max="1" step="0.01" value="${m.defVol}"></label>
             ${!m.isNoise ? `
-            <label>Semitonos (<span class="val">${m.defSemi}</span>) <input type="range" id="${m.id}-semi" min="-24" max="24" step="1" value="${m.defSemi}"></label>
-            <label>Centésimas (<span class="val">0</span>) <input type="range" id="${m.id}-cents" min="-50" max="50" step="1" value="0"></label>
+            <label>Semitonos <input type="number" class="val-input" id="${m.id}-semi-num" min="-24" max="24" step="1" value="${m.defSemi}"> <input type="range" id="${m.id}-semi" min="-24" max="24" step="1" value="${m.defSemi}"></label>
+            <label>Centésimas <input type="number" class="val-input" id="${m.id}-cents-num" min="-50" max="50" step="1" value="0"> <input type="range" id="${m.id}-cents" min="-50" max="50" step="1" value="0"></label>
             ` : ''}
-            <label>Filtro LP (<span class="val">20000</span>Hz) <input type="range" id="${m.id}-lp" min="20" max="20000" step="1" value="20000"></label>
-            <label>Filtro HP (<span class="val">20</span>Hz) <input type="range" id="${m.id}-hp" min="20" max="20000" step="1" value="20"></label>
+            <label>Filtro LP (Hz) <input type="number" class="val-input" id="${m.id}-lp-num" min="20" max="20000" step="1" value="20000"> <input type="range" id="${m.id}-lp" min="20" max="20000" step="1" value="20000"></label>
+            <label>Filtro HP (Hz) <input type="number" class="val-input" id="${m.id}-hp-num" min="20" max="20000" step="1" value="20"> <input type="range" id="${m.id}-hp" min="20" max="20000" step="1" value="20"></label>
             
             <h4>Envolvente ADSR</h4>
-            <label>A (<span class="val">0.05</span>s) <input type="range" id="${m.id}-a" min="0.01" max="2" step="0.01" value="0.05"></label>
-            <label>D (<span class="val">0.3</span>s) <input type="range" id="${m.id}-d" min="0.01" max="2" step="0.01" value="0.3"></label>
-            <label>S (<span class="val">0.5</span>) <input type="range" id="${m.id}-s" min="0" max="1" step="0.01" value="0.5"></label>
-            <label>R (<span class="val">0.5</span>s) <input type="range" id="${m.id}-r" min="0.01" max="3" step="0.01" value="0.5"></label>
+            <label>A (s) <input type="number" class="val-input" id="${m.id}-a-num" min="0.01" max="2" step="0.01" value="0.05"> <input type="range" id="${m.id}-a" min="0.01" max="2" step="0.01" value="0.05"></label>
+            <label>D (s) <input type="number" class="val-input" id="${m.id}-d-num" min="0.01" max="2" step="0.01" value="0.3"> <input type="range" id="${m.id}-d" min="0.01" max="2" step="0.01" value="0.3"></label>
+            <label>S <input type="number" class="val-input" id="${m.id}-s-num" min="0" max="1" step="0.01" value="0.5"> <input type="range" id="${m.id}-s" min="0" max="1" step="0.01" value="0.5"></label>
+            <label>R (s) <input type="number" class="val-input" id="${m.id}-r-num" min="0.01" max="3" step="0.01" value="0.5"> <input type="range" id="${m.id}-r" min="0.01" max="3" step="0.01" value="0.5"></label>
             
             <h4>Efectos</h4>
-            <label>Overdrive (<span class="val">0</span>) <input type="range" id="${m.id}-drv" min="0" max="100" step="1" value="0"></label>
-            <label>Phaser Mix (<span class="val">0</span>) <input type="range" id="${m.id}-phs" min="0" max="1" step="0.01" value="0"></label>
-            <label>Flanger Mix (<span class="val">0</span>) <input type="range" id="${m.id}-flg" min="0" max="1" step="0.01" value="0"></label>
-            <label>Delay Mix (<span class="val">0</span>) <input type="range" id="${m.id}-dly" min="0" max="1" step="0.01" value="0"></label>
-            <label>Reverb Mix (<span class="val">0</span>) <input type="range" id="${m.id}-rev" min="0" max="1" step="0.01" value="0"></label>
+            <label>Overdrive <input type="number" class="val-input" id="${m.id}-drv-num" min="0" max="100" step="1" value="0"> <input type="range" id="${m.id}-drv" min="0" max="100" step="1" value="0"></label>
+            <label>Phaser Mix <input type="number" class="val-input" id="${m.id}-phs-num" min="0" max="1" step="0.01" value="0"> <input type="range" id="${m.id}-phs" min="0" max="1" step="0.01" value="0"></label>
+            <label>Flanger Mix <input type="number" class="val-input" id="${m.id}-flg-num" min="0" max="1" step="0.01" value="0"> <input type="range" id="${m.id}-flg" min="0" max="1" step="0.01" value="0"></label>
+            <label>Delay Mix <input type="number" class="val-input" id="${m.id}-dly-num" min="0" max="1" step="0.01" value="0"> <input type="range" id="${m.id}-dly" min="0" max="1" step="0.01" value="0"></label>
+            <label>Reverb Mix <input type="number" class="val-input" id="${m.id}-rev-num" min="0" max="1" step="0.01" value="0"> <input type="range" id="${m.id}-rev" min="0" max="1" step="0.01" value="0"></label>
 
             <h4>LFO</h4>
             <label>Destino: <select id="${m.id}-lfo-tgt"><option value="none">Off</option>${!m.isNoise ? '<option value="pitch">Pitch</option>' : ''}<option value="lp">Cutoff LP</option><option value="vol">Volumen</option></select></label>
-            <label>Rate (<span class="val">5</span>Hz) <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
-            <label>Depth (<span class="val">50</span>) <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
+            <label>Rate (Hz) <input type="number" class="val-input" id="${m.id}-lfo-rt-num" min="0.1" max="20" step="0.1" value="5"> <input type="range" id="${m.id}-lfo-rt" min="0.1" max="20" step="0.1" value="5"></label>
+            <label>Depth <input type="number" class="val-input" id="${m.id}-lfo-dp-num" min="0" max="100" step="1" value="50"> <input type="range" id="${m.id}-lfo-dp" min="0" max="100" step="1" value="50"></label>
         </div>`;
     });
     
@@ -70,51 +70,51 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     `).join('');
 
-// Actualizar textos de la interfaz dinámicamente
+// Actualizar textos e inputs dinámicamente y bidireccional
     document.addEventListener('input', e => {
+        let targetId = e.target.id;
+        let targetValue = e.target.value;
+
+        // Sincronizar Range (Deslizador) y Number (Caja)
         if (e.target.type === 'range') {
-            const span = e.target.parentElement.querySelector('.val');
-            if (span) span.innerText = e.target.value;
+            const numInput = document.getElementById(targetId + '-num');
+            if (numInput) numInput.value = targetValue;
+        } else if (e.target.type === 'number' && targetId.endsWith('-num')) {
+            targetId = targetId.replace('-num', ''); // Quita el '-num' para afectar al sintetizador
+            const rangeInput = document.getElementById(targetId);
+            if (rangeInput) rangeInput.value = targetValue;
         }
 
-        // Control del Volumen Maestro mejorado
-        if (e.target.id === 'master-vol') {
-            const masterVal = document.getElementById('master-vol-val');
-            if (masterVal) masterVal.innerText = e.target.value;
+        // Control del Volumen Maestro
+        if (targetId === 'master-vol') {
             if (typeof masterGain !== 'undefined' && masterGain) {
-                masterGain.gain.value = parseFloat(e.target.value);
+                masterGain.gain.value = parseFloat(targetValue);
             }
         }
 
         // Control en tiempo real de los parámetros hacia los buses y voces activas
         if (typeof audioCtx !== 'undefined' && audioCtx) {
             
-            // 1. Actualizar buses (Efectos globales Delay, Reverb, etc)
             ['o1', 'o2', 'o3', 'n'].forEach(id => {
-                if (e.target.id.startsWith(id) && busses && busses[id]) {
+                if (targetId.startsWith(id) && busses && busses[id]) {
                     busses[id].update(getParams(id));
                 }
             });
 
-            // 2. Modulación en tiempo real de las notas sostenidas
             const now = audioCtx.currentTime;
             Object.values(activeVoices).forEach(chains => {
                 chains.forEach(chain => {
-                    // Verifica si el deslizador pertenece a este oscilador
-                    if (e.target.id.startsWith(chain.prefix)) {
+                    if (targetId.startsWith(chain.prefix)) {
                         const p = getParams(chain.prefix);
                         
-                        // Barrido de Filtros
                         if (chain.filterLP) chain.filterLP.frequency.setTargetAtTime(p.lp, now, 0.05);
                         if (chain.filterHP) chain.filterHP.frequency.setTargetAtTime(p.hp, now, 0.05);
                         
-                        // Modificación de Tono (Semitonos y Centésimas)
                         if (!chain.isNoise && chain.source) {
                             const pitchShift = p.semi + (p.cents / 100);
                             chain.source.frequency.setTargetAtTime(chain.baseFreq * Math.pow(2, pitchShift / 12), now, 0.05);
                         }
 
-                        // Modificación de LFO en vivo
                         if (chain.lfo) {
                             chain.lfo.frequency.setTargetAtTime(p.lfoRt, now, 0.05);
                             if (chain.lfoGain) {
@@ -470,16 +470,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('keydown', e => {
         if (e.repeat) return;
-        
-        // Solo ignorar el teclado físico si se está escribiendo texto
-        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
-        
+        // Ignorar el teclado físico si se está escribiendo texto o números
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password' || e.target.type === 'number')) return;
         playNote(e.key.toLowerCase());
     });
 
     window.addEventListener('keyup', e => {
-        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password')) return;
-        
+        if (e.target.tagName === 'INPUT' && (e.target.type === 'text' || e.target.type === 'email' || e.target.type === 'password' || e.target.type === 'number')) return;
         stopNote(e.key.toLowerCase());
     });
 
