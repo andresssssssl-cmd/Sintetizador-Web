@@ -25,14 +25,6 @@ h1 {
     font-size: 1.5rem;
 }
 
-.rta-container {
-    background: #000; 
-    border: 2px solid var(--border);
-    border-radius: 8px; 
-    padding: 5px; 
-    margin-bottom: 15px;
-}
-
 #rta-canvas { 
     background: #050505; 
     border-radius: 4px; 
@@ -281,6 +273,30 @@ select { background: #111; color: white; border: 1px solid #444; padding: 2px; f
     border-radius: 12px;
 }
 
+/* --- ESTILOS DE LOS VISUALIZADORES --- */
+.visualizers-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 800px;
+    margin-bottom: 20px;
+}
+
+.canvas-container {
+    background: #000;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 5px;
+    position: relative;
+}
+
+.canvas-container canvas {
+    background: #050505;
+    border-radius: 4px;
+    display: block;
+    width: 100%;
+}
 .switch-label input {
     accent-color: var(--accent);
     cursor: pointer;
