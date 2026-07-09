@@ -450,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const input = audioCtx.createGain();
         const output = audioCtx.createGain();
 
-        // Utilidad interna para crear ruteos Dry/Wet en serie (OD, Phaser, Flanger)
         function createInsertFx() {
             const inNode = audioCtx.createGain();
             const outNode = audioCtx.createGain();
@@ -460,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return { in: inNode, out: outNode, dry, wet };
         }
 
-        // --- EFECTOS EN SERIE (Insertos) ---
         // 1. Overdrive
         const odNode = createInsertFx();
         const drive = audioCtx.createWaveShaper();
@@ -476,82 +474,79 @@ document.addEventListener('DOMContentLoaded', () => {
         pLfo.connect(pDepth).connect(phaser.frequency);
         odNode.out.connect(phsNode.in).connect(phaser);
         phaser.connect(phsNode.wet).connect(phsNode.out);
-        phaser.connect(phsFb).connect(phaser); // Bucle Feedback
+        phaser.connect(phsFb).connect(phaser);
 
-        // 3. Flanger
+        // 3. Flanger (CORRECCIÓN: Aumentar el maxDelayTime a 1.0 para evitar colapso)
         const flgNode = createInsertFx();
-        const flanger = audioCtx.createDelay(0.02);
+        const flanger = audioCtx.createDelay(1.0); 
         const fLfo = audioCtx.createOscillator(); fLfo.start();
         const fDepth = audioCtx.createGain();
         const flgFb = audioCtx.createGain();
         fLfo.connect(fDepth).connect(flanger.delayTime);
         phsNode.out.connect(flgNode.in).connect(flanger);
         flanger.connect(flgNode.wet).connect(flgNode.out);
-        flanger.connect(flgFb).connect(flanger); // Bucle Feedback
+        flanger.connect(flgFb).connect(flanger);
         
-        flgNode.out.connect(output); // Salida del bloque en serie al master
+        flgNode.out.connect(output); 
 
-        // --- EFECTOS EN PARALELO (Envíos) ---
         const sendNode = flgNode.out;
 
         // 4. Delay Multimodo
         const dlyIn = audioCtx.createGain();
         const dlyWet = audioCtx.createGain();
-        const delayNode = audioCtx.createDelay(5.0);
+        const delayNode = audioCtx.createDelay(10.0); // CORRECCIÓN: Subido a 10s máximo
         const dlyFb = audioCtx.createGain();
         const dlyHc = audioCtx.createBiquadFilter(); dlyHc.type = 'lowpass';
         const dlyPan = audioCtx.createStereoPanner();
         
         sendNode.connect(dlyIn).connect(delayNode);
-        delayNode.connect(dlyHc).connect(dlyFb).connect(delayNode); // Filtro dentro del feedback
+        delayNode.connect(dlyHc).connect(dlyFb).connect(delayNode); 
         delayNode.connect(dlyPan).connect(dlyWet).connect(output);
 
         // 5. Reverb Paramétrico
         const revIn = audioCtx.createGain();
         const revWet = audioCtx.createGain();
-        const preDelay = audioCtx.createDelay(1.0);
+        const preDelay = audioCtx.createDelay(5.0); // CORRECCIÓN: Subido a 5s máximo
         const revLc = audioCtx.createBiquadFilter(); revLc.type = 'highpass';
         const revHc = audioCtx.createBiquadFilter(); revHc.type = 'lowpass';
         const convolver = audioCtx.createConvolver();
         
         sendNode.connect(revIn).connect(preDelay).connect(revLc).connect(revHc).connect(convolver).connect(revWet).connect(output);
 
-        // Memoria de estado para no regenerar el IR innecesariamente
         let currentRevState = { typ: '', tm: 0 };
+
+        sendNode.connect(output);       
+        output.connect(masterGain);     
         
         return {
             input,
             update: (p) => {
-                // OD
                 drive.curve = makeDistortionCurve(p.odDrv);
                 odNode.wet.gain.value = p.odMix; odNode.dry.gain.value = 1 - p.odMix;
                 
-                // Phaser
                 pLfo.frequency.value = p.phsRt; pDepth.gain.value = p.phsDp;
                 phsFb.gain.value = p.phsFb;
                 phsNode.wet.gain.value = p.phsMix; phsNode.dry.gain.value = 1 - p.phsMix;
 
-                // Flanger
                 fLfo.frequency.value = p.flgRt; fDepth.gain.value = p.flgDp;
                 flgFb.gain.value = p.flgFb;
                 flgNode.wet.gain.value = p.flgMix; flgNode.dry.gain.value = 1 - p.flgMix;
 
-                // Delay
-                delayNode.delayTime.value = p.dlyTm;
+                // CORRECCIÓN: Asegurar que el delay esté en rango válido para no colapsar el nodo
+                delayNode.delayTime.value = Math.max(0.01, Math.min(p.dlyTm, 5.0));
                 dlyFb.gain.value = p.dlyFb;
                 dlyHc.frequency.value = p.dlyHc;
                 dlyWet.gain.value = p.dlyMix;
-                if(p.dlyTyp === 'mono') dlyPan.pan.value = 0;
-                else if(p.dlyTyp === 'stereo') dlyPan.pan.value = 0.5; // Apertura espacial
-                else if(p.dlyTyp === 'pan') dlyPan.pan.value = -0.8; // Simulación asimétrica ping-pong
                 
-                // Reverb
-                preDelay.delayTime.value = p.revPd;
+                if(p.dlyTyp === 'mono') dlyPan.pan.value = 0;
+                else if(p.dlyTyp === 'stereo') dlyPan.pan.value = 0.5; 
+                else if(p.dlyTyp === 'pan') dlyPan.pan.value = -0.8; 
+                
+                preDelay.delayTime.value = Math.max(0, Math.min(p.revPd, 2.0));
                 revLc.frequency.value = p.revLc;
                 revHc.frequency.value = p.revHc;
                 revWet.gain.value = p.revMix;
 
-                // Regenerar el motor de Convolución únicamente si cambiaste el Tipo o el Tiempo
                 if (p.revTyp !== currentRevState.typ || p.revTm !== currentRevState.tm) {
                     convolver.buffer = createReverbIR(p.revTyp, p.revTm);
                     currentRevState.typ = p.revTyp;
@@ -645,12 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const filterHP = audioCtx.createBiquadFilter();
-        filterHP.type = 'highpass'; filterHP.frequency.value = params.hp;
+        filterHP.type = 'highpass'; 
+        filterHP.frequency.value = Math.max(20, Math.min(params.hp, 20000));
 
         const filterLP = audioCtx.createBiquadFilter();
-        filterLP.type = 'lowpass'; filterLP.frequency.value = params.lp;
+        filterLP.type = 'lowpass'; 
+        filterLP.frequency.value = Math.max(20, Math.min(params.lp, 20000));
 
-        // NUEVO NODO: Paneo Estéreo
         const panner = audioCtx.createStereoPanner();
         panner.pan.value = 0;
 
@@ -668,7 +664,6 @@ document.addEventListener('DOMContentLoaded', () => {
             lfo.frequency.value = params.lfoRt;
             lfo.connect(lfoGain);
 
-            // NUEVAS RUTAS DE MODULACIÓN
             if (params.lfoTgt === 'pitch' && !isNoise) {
                 lfoGain.gain.value = params.lfoDp * 5; 
                 lfoGain.connect(source.frequency);
@@ -692,8 +687,8 @@ document.addEventListener('DOMContentLoaded', () => {
         filterHP.connect(filterLP);
         filterLP.connect(envGain);
         envGain.connect(lfoModGain);
-        lfoModGain.connect(panner); // Pasa por el panner estéreo
-        panner.connect(busses[prefix].input); // Y entra al bus de efectos
+        lfoModGain.connect(panner);
+        panner.connect(busses[prefix].input); 
 
         source.start(t);
         return { source, envGain, lfo, lfoGain, lfoModGain, filterLP, filterHP, panner, baseFreq, r: params.r, prefix, isNoise };
